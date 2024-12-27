@@ -4,6 +4,7 @@
 #include <iostream>
 #include <thread>
 #include <vector>
+#include <unordered_set>
 
 /*
 
@@ -99,20 +100,140 @@ TEST(Basic, Unsussesful_Pop) {
 //          the same order as we pushed
 TEST(Concurrent, SPSC) {
 
-    std::vector<std::thread>
+    lock_std_queue<int> q;
+    std::vector<std::thread> threads;
+    int concurrency_level = 2;
+    int n = 1000;
+    threads.emplace_back( [&](){
+        for (int i = 0; i < n; ++i) {
+            q.push(i);
+        }
+    });
+    std::vector<int> values(n);
+    threads.emplace_back( [&](){
+        for (int i = 0; i < n; ++i) {
+            q.wait_and_pop(values[i]);
+        }
+    });
 
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_EQ(i, values[i]);
+    }
 }
-
 
 // 6. Single Producer, Multiple Consumers
 //    -> in the end we must have all the elements
 
+TEST(Concurrent, SPMC) {
+
+    lock_std_queue<int> q;
+    std::vector<std::thread> threads;
+    int concurrency_level = 4;
+    int n = 999;
+    threads.emplace_back( [&](){
+        for (int i = 0; i < n; ++i) {
+            q.push(i);
+        }
+    });
+
+    std::vector<std::atomic<bool>> values(n);
+    for (int i = 0; i < 3; ++i) {
+        threads.emplace_back([&]() {
+            for (int j = 0; j < n / 3; ++j) {
+                int val;
+                q.wait_and_pop(val);
+                values[val].store(true, std::memory_order_relaxed);
+            }
+        });
+    }
+
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
+
 // 7. Multiple Producers, Single Consumer
 //    -> in the end we have all the elements that we pushed
+
+TEST(Concurrent, MPSC) {
+
+    lock_std_queue<int> q;
+    std::vector<std::thread> threads;
+    int concurrency_level = 4;
+    int n = 999;
+    for (int i = 0; i < 3; ++i) {
+        threads.emplace_back([i, &q, n]() {
+            int beg = i * (n / 3);
+            int end = (i + 1) * (n / 3);
+            for (int j = beg; j < end; ++j) {
+                q.push(j);
+            }
+        });
+    }
+
+    std::vector<std::atomic<bool>> values(n);
+    threads.emplace_back([&]() {
+        for (int j = 0; j < n; ++j) {
+            int val;
+            q.wait_and_pop(val);
+            values[val].store(true, std::memory_order_relaxed);
+        }
+    });
+
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
 
 // 8. Multiple Producres, Multiple Consumers
 //    -> in the end we have all the elements that we pushed
 
 
+TEST(Concurrent, MPMC) {
 
+    lock_std_queue<int> q;
+    std::vector<std::thread> threads;
+    int concurrency_level = 8;
+    int n = 1200;
+    for (int i = 0; i < 4; ++i) {
+        threads.emplace_back([i, &q, n]() {
+            int beg = i * (n / 4);
+            int end = (i + 1) * (n / 4);
+            for (int j = beg; j < end; ++j) {
+                q.push(j);
+            }
+        });
+    }
+
+    std::vector<std::atomic<bool>> values(n);
+    for (int i = 0; i < 4; ++i) {
+        threads.emplace_back([n, &q, &values]() {
+            for (int j = 0; j < n / 4; ++j) {
+                int val;
+                q.wait_and_pop(val);
+                values[val].store(true, std::memory_order_relaxed);
+            }
+        });
+    }
+
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
 

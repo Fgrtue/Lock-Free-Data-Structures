@@ -1,1 +1,0 @@
-/usr/bin/c++ -fsanitize=thread -fno-omit-frame-pointer -g CMakeFiles/Tests.dir/Tests_LockSTDQ.cpp.o -o Tests  ../lib/libgtest_main.a ../libLockFree.a ../lib/libgtest.a 

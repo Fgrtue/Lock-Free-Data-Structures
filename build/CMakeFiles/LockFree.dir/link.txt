@@ -1,2 +1,0 @@
-/usr/bin/ar qc libLockFree.a CMakeFiles/LockFree.dir/src/lock-std-queue.cpp.o
-/usr/bin/ranlib libLockFree.a
