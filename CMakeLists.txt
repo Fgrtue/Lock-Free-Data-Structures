@@ -16,30 +16,40 @@ set(CMAKE_CXX_STANDARD 17)
 # essential for creating shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# 5. Allows have unit testing
+# 5. Add the google test subdirectory
+#   and test subdirectory
+add_subdirectory(googletest)
+add_subdirectory(test)
+
+# 6. Add the google bencmark subdirectory
+#   and benchmark subdirectory
+add_subdirectory(googlebench) 
+add_subdirectory(benchmarks) 
+
+
+# 7. Allows have unit testing
 enable_testing()
 
-add_subdirectory(googletest)
-
-# 6. Add ThreadSanitizer flags if enabled
-if(ENABLE_TSAN)
-    set(CMAKE_C_FLAGS "-fsanitize=thread -fno-omit-frame-pointer -g")
-    set(CMAKE_CXX_FLAGS "-fsanitize=thread -fno-omit-frame-pointer -g")
+# 8. Add ThreadSanitizer flags if enabled
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -g")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -g")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
 endif()
 
-# 7. Define library sources
+
+# 9. Define library sources
 set(HEADERS include/lock-std-queue.hpp)
 set(SOURCES src/lock-std-queue.cpp)
 
-# 8. it will be linked with other things
+# 10. it will be linked with other things
 # to form program. We will split our code in
 # the actual code and the TEST to go with the code
 # the code that is tested is library
 add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 
-# 9. Specify include directories
+# 11. Specify include directories
 target_include_directories(${PROJECT_NAME} PUBLIC include)
-
-# 10. Add the test subdirectory
-add_subdirectory(test)
 

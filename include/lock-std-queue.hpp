@@ -49,7 +49,7 @@ void lock_std_queue<T>::push(T new_value) {
 
     // Observe that allocation is done outside of the queue
     // Therefore malloc is not called while holding a lock
-    std::shared_ptr<T> p = std::make_shared<T>(std::move(new_value));
+    std::shared_ptr<T> p = std::make_shared<T>(std::move(new_value)); // 1 Possibility of exception
     std::lock_guard<std::mutex> lg_(mt_);
     data_.push(p);
     // An issue with this notify might be
@@ -65,7 +65,7 @@ void lock_std_queue<T>::wait_and_pop(T& val) {
 
     std::unique_lock<std::mutex> lg(mt_);
     cv_.wait(lg, [this](){ return !data_.empty();});
-    val = std::move(*data_.front());
+    val = std::move(*data_.front());  // 2 Possibility of exception
     data_.pop();
 }
 
@@ -74,7 +74,7 @@ std::shared_ptr<T> lock_std_queue<T>::wait_and_pop() {
 
     std::unique_lock<std::mutex> lg(mt_);
     cv_.wait(lg, [this](){ return !data_.empty();});
-    auto p = data_.front();
+    auto p = data_.front(); // 3 Possibility of exception
     data_.pop();
     return p;
 }
@@ -86,7 +86,7 @@ bool lock_std_queue<T>::try_pop(T& val) {
     if (data_.empty()) {
         return false;
     }
-    val = std::move(*data_.front());
+    val = std::move(*data_.front()); // 4 Possibility of exception
     data_.pop();
     return true;
 }
@@ -98,7 +98,7 @@ std::shared_ptr<T> lock_std_queue<T>::try_pop() {
     if (data_.empty()) {
         return std::shared_ptr<T>();
     }
-    auto ptr = data_.front();
+    auto ptr = data_.front(); // 5 Possibility of exception
     data_.pop();
     return ptr;
 }
