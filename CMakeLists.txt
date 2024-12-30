@@ -27,13 +27,14 @@ add_subdirectory(googlebench)
 add_subdirectory(benchmarks) 
 
 
+
 # 7. Allows have unit testing
 enable_testing()
 
 # 8. Add ThreadSanitizer flags if enabled
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -g")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -g")
+  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g -pthread")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g -pthread")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
@@ -53,3 +54,6 @@ add_library(${PROJECT_NAME} STATIC ${SOURCES} ${HEADERS})
 # 11. Specify include directories
 target_include_directories(${PROJECT_NAME} PUBLIC include)
 
+# 12. Attach threads library 
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)

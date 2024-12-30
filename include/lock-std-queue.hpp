@@ -16,7 +16,7 @@ class lock_std_queue {
 
     // Pushes a value into the queue
     // Notifies oter threads that were waiting on pop
-    void push(T new_value);
+    void push(T value_new);
 
     // Wait in case queue is empty
     // Delete value from the queue once it is there 
@@ -45,11 +45,11 @@ class lock_std_queue {
 };
 
 template <class T>
-void lock_std_queue<T>::push(T new_value) {
+void lock_std_queue<T>::push(T value_new) {
 
     // Observe that allocation is done outside of the queue
     // Therefore malloc is not called while holding a lock
-    std::shared_ptr<T> p = std::make_shared<T>(std::move(new_value)); // 1 Possibility of exception
+    std::shared_ptr<T> p = std::make_shared<T>(std::move(value_new)); // 1 Possibility of exception
     std::lock_guard<std::mutex> lg_(mt_);
     data_.push(p);
     // An issue with this notify might be
@@ -118,7 +118,7 @@ Delete the copy constructor and copy assignment operator to prevent copying.
 
 2. Implement the push Function
 Function Declaration:
-void push(T new_value).
+void push(T value_new).
     - Pushes a value into the queue
     - Notifies oter threads that were waiting on pop
 
@@ -153,18 +153,6 @@ Modify the push function to use data_cond.notify_all() instead of notify_one() i
 Handle Exceptions in wait_and_pop:
 Implement additional exception handling to ensure all waiting threads are properly notified in case of exceptions.
 
-9. Optimize Performance (Optional)
-Move Semantics:
-Ensure that your queue efficiently handles move-only types by appropriately using std::move.
-Fine-Grained Locking:
-Explore more granular locking mechanisms to improve concurrency, if applicable.
-
-10. Document Your Code
-Add Comments:
-Provide clear comments explaining the purpose of each part of your code.
-Create Documentation:
-Optionally, create separate documentation outlining the design decisions and usage of your threadsafe_queue.
-
 11. Create a Test Program
 Set Up main.cpp:
 Create a main.cpp file to test your threadsafe_queue.
@@ -180,7 +168,5 @@ Add delays to simulate work (e.g., using std::this_thread::sleep_for).
 Consumer Thread:
 Implement a thread that pops integers from the queue using wait_and_pop.
 Print the consumed values to verify correctness.
-
-Feel free to revisit each task, experiment with different approaches, and integrate additional features as you become more comfortable with concurrent programming concepts. Happy coding!
 
 */

@@ -1,5 +1,8 @@
 #include <benchmark/benchmark.h>
-#include "../include/lock-std-queue.hpp"
+#include "../include/lock-fine-queue.hpp"
+#include <iostream>
+#include <chrono>
+#include <thread>
 
 class QueueFix : public benchmark::Fixture {
     
@@ -8,7 +11,7 @@ public:
     void SetUp(::benchmark::State& state) override 
     {
         if (state.thread_index() == 0) {
-            for (int i = 0; i < 36; ++i) {
+            for (int i = 0; i < kNumItems; ++i) {
                 q.push(1);
             }
         }
@@ -23,27 +26,26 @@ public:
         }
     }
 
-  lock_std_queue<int> q;
-  static constexpr int kNumItems = 100;
+  lock_fine_queue<int> q;
+  static constexpr int kNumItems = 1000;
 };
 
-BENCHMARK_DEFINE_F(QueueFix, bench_push_lock_std_queue)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(QueueFix, bench_push_lock_fine_queue)(benchmark::State& state) {
     for (auto _ : state) {
         q.push(1);
     }
 }
 
-BENCHMARK_DEFINE_F(QueueFix, bench_pop_lock_std_queue)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(QueueFix, bench_pop_lock_fine_queue)(benchmark::State& state) {
     int val;
     for (auto _ : state) {
         q.try_pop(val);
     }
 }
 
-BENCHMARK_DEFINE_F(QueueFix, bench_push_pop_lock_std_queue)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(QueueFix, bench_push_pop_lock_fine_queue)(benchmark::State& state) {
 
-    int halfThreads = state.threads() / 2;
-    bool pusher     = (state.thread_index() < halfThreads);
+    bool pusher     = state.thread_index() % 2;
 
     for (auto _ : state) {
         if (pusher) {
@@ -63,21 +65,19 @@ BENCHMARK_DEFINE_F(QueueFix, bench_push_pop_lock_std_queue)(benchmark::State& st
 
 // Here write the amounts of threads that you want to use
 // 2, 4, 8, 16
-// Also you might want to use RealTime()
-BENCHMARK_REGISTER_F(QueueFix, bench_push_lock_std_queue)
+BENCHMARK_REGISTER_F(QueueFix, bench_push_lock_fine_queue)
     ->Name("PushLockQueue")
     ->UseRealTime()
     ->ThreadRange(1, 16);
 
-BENCHMARK_REGISTER_F(QueueFix, bench_pop_lock_std_queue)
+BENCHMARK_REGISTER_F(QueueFix, bench_pop_lock_fine_queue)
     ->Name("PopLockQueue")
     ->UseRealTime()
     ->ThreadRange(1, 16);
 
-BENCHMARK_REGISTER_F(QueueFix, bench_push_pop_lock_std_queue)
+BENCHMARK_REGISTER_F(QueueFix, bench_push_pop_lock_fine_queue)
     ->Name("PushPopLockQueue")
     ->UseRealTime()
     ->Unit(benchmark::kMicrosecond)
     ->ThreadRange(2, 16);
-
 BENCHMARK_MAIN();

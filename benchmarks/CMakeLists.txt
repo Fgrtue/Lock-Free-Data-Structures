@@ -8,3 +8,11 @@ target_link_libraries(bench_lock_std_queue
         LockFree                 
         benchmark::benchmark_main 
 )
+
+add_executable(bench_lock_fine_queue bench_lock_fine_queue.cpp)
+
+target_link_libraries(bench_lock_fine_queue 
+    PRIVATE
+        LockFree                 
+        benchmark::benchmark_main 
+)

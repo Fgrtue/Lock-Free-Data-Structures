@@ -1,4 +1,4 @@
-#include "../include/lock-std-queue.hpp"
+#include "../include/lock-fine-queue.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>
@@ -43,7 +43,7 @@
 
 // 1. Single thread, empty
 TEST(Basic, Empty) {
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     EXPECT_TRUE(q.empty());
 }
 
@@ -51,7 +51,7 @@ TEST(Basic, Empty) {
 //  try pop with value
 TEST(Basic, Push_TryPopVal) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
 
     q.push(1);
     q.push(2);
@@ -70,7 +70,7 @@ TEST(Basic, Push_TryPopVal) {
 //  try pop with ptr
 TEST(Basic, Push_TryPopPtr) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
 
     q.push(1);
     q.push(2);
@@ -92,7 +92,7 @@ TEST(Basic, Push_TryPopPtr) {
 // 4. Single thread, unsuccessful pop
 TEST(Basic, Unsussesful_Pop) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     int val;
     EXPECT_FALSE(q.try_pop(val));
     EXPECT_FALSE(q.try_pop());
@@ -103,7 +103,7 @@ TEST(Basic, Unsussesful_Pop) {
 //          the same order as we pushed
 TEST(Concurrent, SPSC) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 2;
     int n = 1000;
@@ -133,7 +133,7 @@ TEST(Concurrent, SPSC) {
 
 TEST(Concurrent, SPMC) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 4;
     int n = 999;
@@ -168,7 +168,7 @@ TEST(Concurrent, SPMC) {
 
 TEST(Concurrent, MPSC) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 4;
     int n = 999;
@@ -204,7 +204,7 @@ TEST(Concurrent, MPSC) {
 //    -> in the end we have all the elements that we pushed
 TEST(Concurrent, MPMC) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 8;
     int n = 1200;
@@ -243,7 +243,7 @@ TEST(Concurrent, MPMC) {
 //    -> use very high N (1 000 000)
 TEST(Stress, HighMPMC) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int number_of_producers = 50;
     int number_of_consumers = 50;
@@ -283,7 +283,7 @@ TEST(Stress, HighMPMC) {
 //          and consumer threads
 TEST(Stress, RandMPMC) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int number_of_producers = 20;
     int number_of_consumers = 20;
@@ -385,7 +385,7 @@ struct ExeptInt {
 
 TEST(Exception, MPMC) {
 
-    lock_std_queue<ExeptInt> q;
+    lock_fine_queue<ExeptInt> q;
     std::vector<std::thread> threads;
     int concurrency_level = 8;
     int n = 1200;
@@ -449,7 +449,7 @@ TEST(Exception, MPMC) {
 //          the same order as we pushed
 TEST(Concurrent, SPSC_PTR) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 2;
     int n = 1000;
@@ -479,7 +479,7 @@ TEST(Concurrent, SPSC_PTR) {
 
 TEST(Concurrent, SPMC_PTR) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 4;
     int n = 999;
@@ -514,7 +514,7 @@ TEST(Concurrent, SPMC_PTR) {
 
 TEST(Concurrent, MPSC_PTR) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 4;
     int n = 999;
@@ -550,7 +550,7 @@ TEST(Concurrent, MPSC_PTR) {
 //    -> in the end we have all the elements that we pushed
 TEST(Concurrent, MPMC_PTR) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int concurrency_level = 8;
     int n = 1200;
@@ -589,7 +589,7 @@ TEST(Concurrent, MPMC_PTR) {
 //    -> use very high N (1 000 000)
 TEST(Stress, HighMPMC_PTR) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int number_of_producers = 50;
     int number_of_consumers = 50;
@@ -629,7 +629,7 @@ TEST(Stress, HighMPMC_PTR) {
 //          and consumer threads
 TEST(Stress, RandMPMC_PTR) {
 
-    lock_std_queue<int> q;
+    lock_fine_queue<int> q;
     std::vector<std::thread> threads;
     int number_of_producers = 20;
     int number_of_consumers = 20;
@@ -679,7 +679,7 @@ TEST(Stress, RandMPMC_PTR) {
 
 TEST(Exception, MPMC_PTR) {
 
-    lock_std_queue<ExeptInt> q;
+    lock_fine_queue<ExeptInt> q;
     std::vector<std::thread> threads;
     int concurrency_level = 8;
     int n = 1200;
@@ -726,5 +726,34 @@ TEST(Exception, MPMC_PTR) {
 
     for (int i = 0; i < n; ++i) {
         EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
+
+TEST(FAILING_BENCH, push_pop_lock_fine_queue) {
+
+    lock_fine_queue<int> q;
+    std::vector<std::thread> threads;
+    int kNumItems = 1000;
+    int concurrency_level = 16;
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads.emplace_back([i, kNumItems, &q]() {
+            bool pusher = i < (16 / 2);
+            if (pusher) {
+                for (int i = 0; i < kNumItems; ++i) {
+                    // std::cout << "We are going to push\n";
+                    q.push(i);
+                    // std::cout << "We pushed\n";
+                }
+            } else {
+                for (int i = 0; i < kNumItems; ++i) {
+                    // std::cout << "We are going to pop\n";
+                    q.wait_and_pop();
+                    // std::cout << "We poped\n";
+                }    
+            }
+        });
+    }
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads[i].join();
     }
 }
