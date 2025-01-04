@@ -69,7 +69,7 @@ class lock_fine_queue {
 
     lock_fine_queue& operator=(const lock_fine_queue&) = delete;
 
-    void push(T value_new);
+    void push(T val);
 
     void wait_and_pop(T& val);
 
@@ -109,10 +109,10 @@ lock_fine_queue<T>::wait_for_data() {
 }
 
 template<class T>
-void lock_fine_queue<T>::push(T value_new) {
+void lock_fine_queue<T>::push(T val) {
 
     // 1. Create new data
-    std::shared_ptr<T> data_new = std::make_shared<T>(std::move(value_new));
+    std::shared_ptr<T> data_new = std::make_shared<T>(std::move(val));
     // 2. Allocate new dummy node
     std::unique_ptr<Node> dummy(new Node);
     // 3. Get variable to store new tail
