@@ -16,30 +16,27 @@ set(CMAKE_CXX_STANDARD 17)
 # essential for creating shared libraries
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# 5. Add the google test subdirectory
+# 5. Allows have unit testing
+enable_testing()
+
+# 6. Add ThreadSanitizer flags if enabled
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g -pthread")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g -pthread")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
+endif()
+
+# 7. Add the google test subdirectory
 #   and test subdirectory
 add_subdirectory(googletest)
 add_subdirectory(test)
 
-# 6. Add the google bencmark subdirectory
+# 8. Add the google bencmark subdirectory
 #   and benchmark subdirectory
 add_subdirectory(googlebench) 
 add_subdirectory(benchmarks) 
-
-
-
-# 7. Allows have unit testing
-enable_testing()
-
-# 8. Add ThreadSanitizer flags if enabled
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g -pthread")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address -fno-omit-frame-pointer -g -pthread")
-elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-  set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
-endif()
-
 
 # 9. Define library sources
 set(HEADERS include/lock-std-queue.hpp)
