@@ -89,8 +89,6 @@ private:
 
     void free_external(external_count& old_count);
 
-    // Node* pop_head(T&);
-
     std::atomic<external_count> head_;
     std::atomic<external_count> tail_;
 
@@ -112,7 +110,13 @@ public:
 
     void push(T val);
 
+    // Sorrowly only one version of pop
+    // is available in this case due to exception
+    // safety. If we were to use pop(T&) version, then
+    // at some point we have to copy or move T type, leading
+    // to possibility of exception in copy/move assignment
     std::shared_ptr<T> pop();
+
 
     ~lock_free_spmc_queue() {
         while(head_.load().node_->next_.load().node_) {
@@ -173,7 +177,7 @@ std::shared_ptr<T> lock_free_spmc_queue<T>::pop() {
     for(;;) {
         increase_external(old_count);
         Node* const ptr = old_count.node_;
-        if (old_count.node_ == tail_.load().node_) {
+        if (ptr == tail_.load().node_) {
             ref_release(ptr);
             return std::shared_ptr<T>();
         }
@@ -190,8 +194,8 @@ std::shared_ptr<T> lock_free_spmc_queue<T>::pop() {
 
 template<class T> 
 bool lock_free_spmc_queue<T>::empty() {
-    external_count old_count = head_.load();
 
+    external_count old_count = head_.load();
     for(;;) {
         increase_external(old_count);
         if (old_count.node_ == tail_.load().node_) {

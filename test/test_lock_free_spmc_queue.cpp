@@ -21,17 +21,10 @@
 
 2. Concurrent Access Tests
 
-    - Multiple Producers
-        -> Multiple threads concurrently push elements into the
-        queue
-        Expect: all elements are succesfully enqueued without data loss
     - Multiple Consumers
         -> Multiple threads concurrently pop elements from the
         queue
         Expect: each element is consumed exactly once
-    - Producers and Comsumers
-        -> Combine multople producer and consumer threads to test the queue
-        under realistic workloads
 
 3. Stress Tests
     - Push and Pop a large number of elements concurrently to test the
@@ -124,9 +117,9 @@ TEST(Concurrent, SPSC) {
     }
 }
 
-// 12. Single Producer, Multiple Consumer
+// 6. Single Producer, Multiple Consumer
 //    -> in the end we must have all the elemens in
-//          the same order as we pushed
+//       some order
 TEST(Concurrent, SPMC) {
 
     lock_free_spmc_queue<int> q;
@@ -163,7 +156,144 @@ TEST(Concurrent, SPMC) {
     }
 }
 
-// 11. Exception handelling
+// 7. Single producer, multiple consumers and multiple checks
+// for emptyness
+
+TEST(Concurrent, SPMC_Empty) {
+
+    lock_free_spmc_queue<int> q;
+    std::vector<std::thread> threads;
+    int concurrency_level = 9;
+    int n = 4000;
+    threads.emplace_back( [&](){
+        for (int i = 0; i < n; ++i) {
+            q.push(i);
+        }
+    });
+
+    std::vector<std::atomic<bool>> values(n);
+    for (int i = 0; i < 4; ++i) {
+        threads.emplace_back([&]() {
+            for (int j = 0; j < n / 4; ++j) {
+
+                auto res = q.pop();
+                if (res) {
+                    values[*res].store(true);
+                } else {
+                    --j;
+                }
+            }
+        });
+    }
+
+    for (int i = 0; i < 4; ++i) {
+        threads.emplace_back([&]() {
+            for (int j = 0; j < n; ++j) {
+                q.empty();
+            }
+        });
+    }
+
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
+
+// 8. Large number of push and pop operations
+//    -> increase number of threas beyond typical
+//    -> use very high N (1 000 000)
+TEST(Stress, HighSPMC_PTR) {
+
+    lock_free_spmc_queue<int> q;
+    std::vector<std::thread> threads;
+    int number_of_producers = 1;
+    int number_of_consumers = 50;
+    int n = 1'000'000;
+
+    threads.emplace_back([&q, n, number_of_producers]() {
+        for (int j = 0; j < n; ++j) {
+            q.push(j);
+        }
+    });
+
+    std::vector<std::atomic<bool>> values(n);
+    for (int i = 0; i < number_of_consumers; ++i) {
+        threads.emplace_back([n, &q, &values, number_of_consumers]() {
+            for (int j = 0; j < n / number_of_consumers; ++j) {
+                std::shared_ptr<int> res = nullptr;
+                while(!res) {
+                    res = q.pop();
+                }
+                values[*res].store(true, std::memory_order_relaxed);
+            }
+        });
+    }
+
+    for (int i = 0; i < (number_of_consumers + number_of_producers); ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
+
+// 9. Random delays
+//     -> Introduce random sleep interval in producer 
+//          and consumer threads
+TEST(Stress, RandMPMC_PTR) {
+
+    lock_free_spmc_queue<int> q;
+
+    std::vector<std::thread> threads;
+    int number_of_producers = 1;
+    int number_of_consumers = 50;
+    int n = 50'000;
+
+    for (int i = 0; i < number_of_producers; ++i) {
+        threads.emplace_back([i, &q, n, number_of_producers]() {
+            std::mt19937 gen(std::random_device{}());
+            std::uniform_int_distribution<int> dist(0, 10);
+            int beg = i * (n / number_of_producers);
+            int end = (i + 1) * (n / number_of_producers);
+            for (int j = beg; j < end; ++j) {
+                q.push(j);
+                std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
+            }
+        });
+    }
+
+    std::vector<std::atomic<bool>> values(n);
+
+    for (int i = 0; i < number_of_consumers; ++i) {
+        threads.emplace_back([n, &q, &values, number_of_consumers]() {
+            std::mt19937 gen(std::random_device{}());
+            std::uniform_int_distribution<int> dist(0, 10);
+            for (int j = 0; j < n / number_of_consumers; ++j) {
+                std::shared_ptr<int> res = nullptr;
+                while(!res) {
+                    res = q.pop();
+                }
+                values[*res].store(true, std::memory_order_relaxed);
+                std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
+            }
+        });
+    }
+
+    for (int i = 0; i < (number_of_consumers + number_of_producers); ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
+
+// 10. Exception handelling
 //    -> Create a type, which in copy/move assignment/operator
 //      throws exeptions with probability 1/6
 //    -> try common tests with push pop to ensure that everything works

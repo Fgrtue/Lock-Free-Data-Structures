@@ -22,6 +22,13 @@ target_link_libraries(test_lock_free_mpsc_queue PRIVATE
     LockFree
 )
 
+add_executable(test_lock_free_spsc_queue test_lock_free_spsc_queue.cpp)
+
+target_link_libraries(test_lock_free_spsc_queue PRIVATE
+    gtest_main
+    LockFree
+)
+
 add_executable(test_lock_free_spmc_queue test_lock_free_spmc_queue.cpp)
 
 

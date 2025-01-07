@@ -1,5 +1,8 @@
 #include <benchmark/benchmark.h>
-#include "../include/lock-std-queue.hpp"
+#include "../include/lock-free-spsc-queue.hpp"
+#include <iostream>
+#include <thread>
+#include <chrono>
 
 class QueueFix : public benchmark::Fixture {
     
@@ -15,15 +18,9 @@ public:
     } 
 
     void TearDown(::benchmark::State& state) override
-    {
-        if (state.thread_index() == 0) {
-            while(!q.empty()) {
-                q.try_pop();
-            }
-        }
-    }
+    {}
 
-  lock_std_queue<int> q;
+  lock_free_spsc_queue<int> q;
   static constexpr int kNumItems = 100000;
 };
 
@@ -34,46 +31,22 @@ BENCHMARK_DEFINE_F(QueueFix, bench_push)(benchmark::State& state) {
 }
 
 BENCHMARK_DEFINE_F(QueueFix, bench_pop)(benchmark::State& state) {
-    int val;
     for (auto _ : state) {
-        q.try_pop(val);
+        q.pop();
     }
 }
 
-BENCHMARK_DEFINE_F(QueueFix, bench_spmc)(benchmark::State& state) {
-
-    bool pusher = (state.thread_index() == 1);
-
-    for (auto _ : state) {
-        if (pusher) {
-            for (int i = 0; i < kNumItems; ++i) {
-                q.push(i);
-            }
-        } else {
-            int val;
-            for (int i = 0; i < kNumItems; ++i) {
-                q.try_pop(val);
-                benchmark::DoNotOptimize(val);
-            }    
-        }
-    }
-    state.SetItemsProcessed(state.iterations() * kNumItems);
-}
-
-BENCHMARK_DEFINE_F(QueueFix, bench_mpmc)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(QueueFix, bench_spsc)(benchmark::State& state) {
 
     bool pusher = state.thread_index() % 2;
-
     for (auto _ : state) {
         if (pusher) {
             for (int i = 0; i < kNumItems; ++i) {
                 q.push(i);
             }
         } else {
-            int val;
             for (int i = 0; i < kNumItems; ++i) {
-                q.try_pop(val);
-                benchmark::DoNotOptimize(val);
+                q.pop();
             }    
         }
     }
@@ -82,26 +55,19 @@ BENCHMARK_DEFINE_F(QueueFix, bench_mpmc)(benchmark::State& state) {
 
 // Here write the amounts of threads that you want to use
 // 2, 4, 8, 16
-// Also you might want to use RealTime()
 BENCHMARK_REGISTER_F(QueueFix, bench_push)
     ->Name("Push")
     ->UseRealTime()
-    ->ThreadRange(1, 32);
+    ->Threads(1);
 
 BENCHMARK_REGISTER_F(QueueFix, bench_pop)
     ->Name("Pop")
     ->UseRealTime()
-    ->ThreadRange(1, 32);
+    ->Threads(1);
 
-BENCHMARK_REGISTER_F(QueueFix, bench_spmc)
-    ->Name("SPMC")
+BENCHMARK_REGISTER_F(QueueFix, bench_spsc)
+    ->Name("SPSC")
     ->UseRealTime()
     ->Unit(benchmark::kMicrosecond)
-    ->ThreadRange(2, 32);
-
-BENCHMARK_REGISTER_F(QueueFix, bench_mpmc)
-    ->Name("MPMC")
-    ->UseRealTime()
-    ->Unit(benchmark::kMicrosecond)
-    ->ThreadRange(2, 32);
+    ->Threads(2);
 BENCHMARK_MAIN();

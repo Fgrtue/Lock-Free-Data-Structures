@@ -11,7 +11,7 @@ public:
     void SetUp(::benchmark::State& state) override 
     {
         if (state.thread_index() == 0) {
-            for (int i = 0; i < kNumItems; ++i) {
+            for (int i = 0; i < (kNumItems * state.threads()); ++i) {
                 q.push(1);
             }
         }
@@ -27,25 +27,25 @@ public:
     }
 
   lock_fine_queue<int> q;
-  static constexpr int kNumItems = 1000;
+  static constexpr int kNumItems = 100000;
 };
 
-BENCHMARK_DEFINE_F(QueueFix, bench_push_lock_fine_queue)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(QueueFix, bench_push)(benchmark::State& state) {
     for (auto _ : state) {
         q.push(1);
     }
 }
 
-BENCHMARK_DEFINE_F(QueueFix, bench_pop_lock_fine_queue)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(QueueFix, bench_pop)(benchmark::State& state) {
     int val;
     for (auto _ : state) {
         q.try_pop(val);
     }
 }
 
-BENCHMARK_DEFINE_F(QueueFix, bench_push_pop_lock_fine_queue)(benchmark::State& state) {
+BENCHMARK_DEFINE_F(QueueFix, bench_spmc)(benchmark::State& state) {
 
-    bool pusher     = state.thread_index() % 2;
+    bool pusher = (state.thread_index() == 1);
 
     for (auto _ : state) {
         if (pusher) {
@@ -55,7 +55,27 @@ BENCHMARK_DEFINE_F(QueueFix, bench_push_pop_lock_fine_queue)(benchmark::State& s
         } else {
             int val;
             for (int i = 0; i < kNumItems; ++i) {
-                q.wait_and_pop(val);
+                q.try_pop(val);
+                benchmark::DoNotOptimize(val);
+            }    
+        }
+    }
+    state.SetItemsProcessed(state.iterations() * kNumItems);
+}
+
+BENCHMARK_DEFINE_F(QueueFix, bench_mpmc)(benchmark::State& state) {
+
+    bool pusher = state.thread_index() % 2;
+
+    for (auto _ : state) {
+        if (pusher) {
+            for (int i = 0; i < kNumItems; ++i) {
+                q.push(i);
+            }
+        } else {
+            int val;
+            for (int i = 0; i < kNumItems; ++i) {
+                q.try_pop(val);
                 benchmark::DoNotOptimize(val);
             }    
         }
@@ -65,19 +85,25 @@ BENCHMARK_DEFINE_F(QueueFix, bench_push_pop_lock_fine_queue)(benchmark::State& s
 
 // Here write the amounts of threads that you want to use
 // 2, 4, 8, 16
-BENCHMARK_REGISTER_F(QueueFix, bench_push_lock_fine_queue)
-    ->Name("PushLockQueue")
+BENCHMARK_REGISTER_F(QueueFix, bench_push)
+    ->Name("Push")
     ->UseRealTime()
-    ->ThreadRange(1, 16);
+    ->ThreadRange(1, 32);
 
-BENCHMARK_REGISTER_F(QueueFix, bench_pop_lock_fine_queue)
-    ->Name("PopLockQueue")
+BENCHMARK_REGISTER_F(QueueFix, bench_pop)
+    ->Name("Pop")
     ->UseRealTime()
-    ->ThreadRange(1, 16);
+    ->ThreadRange(1, 32);
 
-BENCHMARK_REGISTER_F(QueueFix, bench_push_pop_lock_fine_queue)
-    ->Name("PushPopLockQueue")
+BENCHMARK_REGISTER_F(QueueFix, bench_spmc)
+    ->Name("SPMC")
     ->UseRealTime()
     ->Unit(benchmark::kMicrosecond)
-    ->ThreadRange(2, 16);
+    ->ThreadRange(2, 32);
+
+BENCHMARK_REGISTER_F(QueueFix, bench_mpmc)
+    ->Name("MPMC")
+    ->UseRealTime()
+    ->Unit(benchmark::kMicrosecond)
+    ->ThreadRange(2, 32);
 BENCHMARK_MAIN();
