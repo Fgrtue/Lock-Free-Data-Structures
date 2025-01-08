@@ -73,19 +73,19 @@ private:
             cnt.node_ = nullptr;
             next_.store(cnt);
             internal_count_.store(0);
-            data_ = nullptr;
+            data_.store(nullptr);
 
         }
 
+        void ref_release();
+
         std::atomic<external_count> next_;
         std::atomic<int> internal_count_;
-        std::shared_ptr<T> data_;
+        std::atomic<T*> data_;
 
     };
 
     void increase_external(external_count&);
-
-    void ref_release(Node*);
 
     void free_external(external_count& old_count);
 
@@ -99,9 +99,8 @@ public:
         Node* node = new Node();
         external_count cnt;
         cnt.node_ = node;
-        cnt.external_count_ = 0;
+        cnt.external_count_ = 2;
         tail_.store(cnt);
-        cnt.external_count_ = 1;
         head_.store(cnt);
     }
 
@@ -115,7 +114,7 @@ public:
     // safety. If we were to use pop(T&) version, then
     // at some point we have to copy or move T type, leading
     // to possibility of exception in copy/move assignment
-    std::shared_ptr<T> pop();
+    std::unique_ptr<T> pop();
 
 
     ~lock_free_spmc_queue() {
@@ -127,17 +126,28 @@ public:
 
     bool empty();
 
+    // This check helps to find out
+    // if the key structure for lock free
+    // algorithm is lock-free
+    bool extern_is_lock_free() {
+        std::atomic<external_count> ec;
+        return ec.is_lock_free();
+    }
 };
 
 template<class T> 
 void lock_free_spmc_queue<T>::push(T val) {
 
+    std::unique_ptr<T> data_new(new T(std::move(val)));
+    Node* node_new = new Node();
     external_count count_new;
     count_new.external_count_ = 1;
-    tail_.load().node_->data_ = std::make_shared<T>(std::move(val));
-    count_new.node_ = new Node();
-    tail_.load().node_->next_.store(count_new);
+    count_new.node_ = node_new;
+    external_count old_tail = tail_.load();
+    old_tail.node_->next_.store(count_new);
+    old_tail.node_->data_.store(data_new.get());
     tail_.store(count_new);
+    data_new.release();
 }
 
 template<class T>
@@ -147,16 +157,15 @@ void lock_free_spmc_queue<T>::increase_external(external_count& old_count) {
     do {
         count_new = old_count;
         ++count_new.external_count_;
-    } while (!head_.compare_exchange_strong(old_count, count_new,
-            std::memory_order_acq_rel, std::memory_order_relaxed));
+    } while (!head_.compare_exchange_strong(old_count, count_new));
     old_count.external_count_ = count_new.external_count_;
 }
 
 template<class T>
-void lock_free_spmc_queue<T>::ref_release(Node* ptr) {
+void lock_free_spmc_queue<T>::Node::ref_release() {
 
-    if (ptr->internal_count_.fetch_sub(1) == 1) {
-        delete ptr;
+    if (internal_count_.fetch_sub(1) == 1) {
+        delete this;
     }
 }
 
@@ -171,23 +180,23 @@ void lock_free_spmc_queue<T>::free_external(external_count& old_count) {
 }
 
 template<class T> 
-std::shared_ptr<T> lock_free_spmc_queue<T>::pop() {
+std::unique_ptr<T> lock_free_spmc_queue<T>::pop() {
 
     external_count old_count = head_.load();
     for(;;) {
         increase_external(old_count);
         Node* const ptr = old_count.node_;
         if (ptr == tail_.load().node_) {
-            ref_release(ptr);
-            return std::shared_ptr<T>();
+            ptr->ref_release();
+            return std::unique_ptr<T>();
         }
-        if (head_.compare_exchange_strong(old_count, ptr->next_)) {
-            std::shared_ptr<T> res;
-            std::swap(res, ptr->data_);
+        external_count next_in_list = ptr->next_.load();
+        if (head_.compare_exchange_strong(old_count, next_in_list)) {
+            T* const res = ptr->data_.exchange(nullptr);
             free_external(old_count);
-            return res;
+            return std::unique_ptr<T>(res);
         }
-        ref_release(ptr);
+        ptr->ref_release();
     }
 }
 
@@ -199,10 +208,10 @@ bool lock_free_spmc_queue<T>::empty() {
     for(;;) {
         increase_external(old_count);
         if (old_count.node_ == tail_.load().node_) {
-            ref_release(old_count.node_);
+            old_count.node_->ref_release();
             return true;
         }
-        ref_release(old_count.node_);
+        old_count.node_->ref_release();
     }
     return false;
 }

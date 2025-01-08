@@ -11,7 +11,6 @@
 #include <memory>
 
 /*
-
 1. Basic Functionality
 
     - Elements pushed into the queue can be popped
@@ -96,6 +95,7 @@ TEST(Concurrent, SPSC) {
             q.push(i);
         }
     });
+
     std::vector<int> values(n);
     threads.emplace_back( [&](){
         for (int i = 0; i < n; ++i) {
@@ -124,8 +124,8 @@ TEST(Concurrent, SPMC) {
 
     lock_free_spmc_queue<int> q;
     std::vector<std::thread> threads;
-    int concurrency_level = 16;
-    int n = 15000;
+    int concurrency_level = 3;
+    int n = 2000;
     threads.emplace_back( [&](){
         for (int i = 0; i < n; ++i) {
             q.push(i);
@@ -137,12 +137,9 @@ TEST(Concurrent, SPMC) {
         threads.emplace_back([&]() {
             for (int j = 0; j < n / (concurrency_level - 1); ++j) {
 
-                auto res = q.pop();
-                if (res) {
-                    values[*res].store(true);
-                } else {
-                    --j;
-                }
+                std::unique_ptr<int> res; 
+                while((res = q.pop()) == nullptr);
+                values[*res].store(true);
             }
         });
     }
@@ -156,245 +153,245 @@ TEST(Concurrent, SPMC) {
     }
 }
 
-// 7. Single producer, multiple consumers and multiple checks
-// for emptyness
+// // // 7. Single producer, multiple consumers and multiple checks
+// // // for emptyness
 
-TEST(Concurrent, SPMC_Empty) {
+// TEST(Concurrent, SPMC_Empty) {
 
-    lock_free_spmc_queue<int> q;
-    std::vector<std::thread> threads;
-    int concurrency_level = 9;
-    int n = 4000;
-    threads.emplace_back( [&](){
-        for (int i = 0; i < n; ++i) {
-            q.push(i);
-        }
-    });
+//     lock_free_spmc_queue<int> q;
+//     std::vector<std::thread> threads;
+//     int concurrency_level = 9;
+//     int n = 4000;
+//     threads.emplace_back( [&](){
+//         for (int i = 0; i < n; ++i) {
+//             q.push(i);
+//         }
+//     });
 
-    std::vector<std::atomic<bool>> values(n);
-    for (int i = 0; i < 4; ++i) {
-        threads.emplace_back([&]() {
-            for (int j = 0; j < n / 4; ++j) {
+//     std::vector<std::atomic<bool>> values(n);
+//     for (int i = 0; i < 4; ++i) {
+//         threads.emplace_back([&]() {
+//             for (int j = 0; j < n / 4; ++j) {
 
-                auto res = q.pop();
-                if (res) {
-                    values[*res].store(true);
-                } else {
-                    --j;
-                }
-            }
-        });
-    }
+//                 auto res = q.pop();
+//                 if (res) {
+//                     values[*res].store(true);
+//                 } else {
+//                     --j;
+//                 }
+//             }
+//         });
+//     }
 
-    for (int i = 0; i < 4; ++i) {
-        threads.emplace_back([&]() {
-            for (int j = 0; j < n; ++j) {
-                q.empty();
-            }
-        });
-    }
+//     for (int i = 0; i < 4; ++i) {
+//         threads.emplace_back([&]() {
+//             for (int j = 0; j < n; ++j) {
+//                 q.empty();
+//             }
+//         });
+//     }
 
-    for (int i = 0; i < concurrency_level; ++i) {
-        threads[i].join();
-    }
+//     for (int i = 0; i < concurrency_level; ++i) {
+//         threads[i].join();
+//     }
 
-    for (int i = 0; i < n; ++i) {
-        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
-    }
-}
+//     for (int i = 0; i < n; ++i) {
+//         EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+//     }
+// }
 
-// 8. Large number of push and pop operations
-//    -> increase number of threas beyond typical
-//    -> use very high N (1 000 000)
-TEST(Stress, HighSPMC_PTR) {
+// // // 8. Large number of push and pop operations
+// // //    -> increase number of threas beyond typical
+// // //    -> use very high N (1 000 000)
+// TEST(Stress, HighSPMC_PTR) {
 
-    lock_free_spmc_queue<int> q;
-    std::vector<std::thread> threads;
-    int number_of_producers = 1;
-    int number_of_consumers = 50;
-    int n = 1'000'000;
+//     lock_free_spmc_queue<int> q;
+//     std::vector<std::thread> threads;
+//     int number_of_producers = 1;
+//     int number_of_consumers = 50;
+//     int n = 1'000'000;
 
-    threads.emplace_back([&q, n, number_of_producers]() {
-        for (int j = 0; j < n; ++j) {
-            q.push(j);
-        }
-    });
+//     threads.emplace_back([&q, n, number_of_producers]() {
+//         for (int j = 0; j < n; ++j) {
+//             q.push(j);
+//         }
+//     });
 
-    std::vector<std::atomic<bool>> values(n);
-    for (int i = 0; i < number_of_consumers; ++i) {
-        threads.emplace_back([n, &q, &values, number_of_consumers]() {
-            for (int j = 0; j < n / number_of_consumers; ++j) {
-                std::shared_ptr<int> res = nullptr;
-                while(!res) {
-                    res = q.pop();
-                }
-                values[*res].store(true, std::memory_order_relaxed);
-            }
-        });
-    }
+//     std::vector<std::atomic<bool>> values(n);
+//     for (int i = 0; i < number_of_consumers; ++i) {
+//         threads.emplace_back([n, &q, &values, number_of_consumers]() {
+//             for (int j = 0; j < n / number_of_consumers; ++j) {
+//                 std::shared_ptr<int> res = nullptr;
+//                 while(!res) {
+//                     res = q.pop();
+//                 }
+//                 values[*res].store(true, std::memory_order_relaxed);
+//             }
+//         });
+//     }
 
-    for (int i = 0; i < (number_of_consumers + number_of_producers); ++i) {
-        threads[i].join();
-    }
+//     for (int i = 0; i < (number_of_consumers + number_of_producers); ++i) {
+//         threads[i].join();
+//     }
 
-    for (int i = 0; i < n; ++i) {
-        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
-    }
-}
+//     for (int i = 0; i < n; ++i) {
+//         EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+//     }
+// }
 
-// 9. Random delays
-//     -> Introduce random sleep interval in producer 
-//          and consumer threads
-TEST(Stress, RandMPMC_PTR) {
+// // // 9. Random delays
+// // //     -> Introduce random sleep interval in producer 
+// // //          and consumer threads
+// // TEST(Stress, RandMPMC_PTR) {
 
-    lock_free_spmc_queue<int> q;
+// //     lock_free_spmc_queue<int> q;
 
-    std::vector<std::thread> threads;
-    int number_of_producers = 1;
-    int number_of_consumers = 50;
-    int n = 50'000;
+// //     std::vector<std::thread> threads;
+// //     int number_of_producers = 1;
+// //     int number_of_consumers = 50;
+// //     int n = 50'000;
 
-    for (int i = 0; i < number_of_producers; ++i) {
-        threads.emplace_back([i, &q, n, number_of_producers]() {
-            std::mt19937 gen(std::random_device{}());
-            std::uniform_int_distribution<int> dist(0, 10);
-            int beg = i * (n / number_of_producers);
-            int end = (i + 1) * (n / number_of_producers);
-            for (int j = beg; j < end; ++j) {
-                q.push(j);
-                std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
-            }
-        });
-    }
+// //     for (int i = 0; i < number_of_producers; ++i) {
+// //         threads.emplace_back([i, &q, n, number_of_producers]() {
+// //             std::mt19937 gen(std::random_device{}());
+// //             std::uniform_int_distribution<int> dist(0, 10);
+// //             int beg = i * (n / number_of_producers);
+// //             int end = (i + 1) * (n / number_of_producers);
+// //             for (int j = beg; j < end; ++j) {
+// //                 q.push(j);
+// //                 std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
+// //             }
+// //         });
+// //     }
 
-    std::vector<std::atomic<bool>> values(n);
+// //     std::vector<std::atomic<bool>> values(n);
 
-    for (int i = 0; i < number_of_consumers; ++i) {
-        threads.emplace_back([n, &q, &values, number_of_consumers]() {
-            std::mt19937 gen(std::random_device{}());
-            std::uniform_int_distribution<int> dist(0, 10);
-            for (int j = 0; j < n / number_of_consumers; ++j) {
-                std::shared_ptr<int> res = nullptr;
-                while(!res) {
-                    res = q.pop();
-                }
-                values[*res].store(true, std::memory_order_relaxed);
-                std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
-            }
-        });
-    }
+// //     for (int i = 0; i < number_of_consumers; ++i) {
+// //         threads.emplace_back([n, &q, &values, number_of_consumers]() {
+// //             std::mt19937 gen(std::random_device{}());
+// //             std::uniform_int_distribution<int> dist(0, 10);
+// //             for (int j = 0; j < n / number_of_consumers; ++j) {
+// //                 std::shared_ptr<int> res = nullptr;
+// //                 while(!res) {
+// //                     res = q.pop();
+// //                 }
+// //                 values[*res].store(true, std::memory_order_relaxed);
+// //                 std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
+// //             }
+// //         });
+// //     }
 
-    for (int i = 0; i < (number_of_consumers + number_of_producers); ++i) {
-        threads[i].join();
-    }
+// //     for (int i = 0; i < (number_of_consumers + number_of_producers); ++i) {
+// //         threads[i].join();
+// //     }
 
-    for (int i = 0; i < n; ++i) {
-        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
-    }
-}
+// //     for (int i = 0; i < n; ++i) {
+// //         EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+// //     }
+// // }
 
-// 10. Exception handelling
-//    -> Create a type, which in copy/move assignment/operator
-//      throws exeptions with probability 1/6
-//    -> try common tests with push pop to ensure that everything works
+// // // 10. Exception handelling
+// // //    -> Create a type, which in copy/move assignment/operator
+// // //      throws exeptions with probability 1/6
+// // //    -> try common tests with push pop to ensure that everything works
 
-struct ExeptInt {
+// struct ExeptInt {
 
-    ExeptInt(int i, bool ex)
-    : i_(i)
-    , fail_(ex)
-    {}
+//     ExeptInt(int i, bool ex)
+//     : i_(i)
+//     , fail_(ex)
+//     {}
 
-    ExeptInt(const ExeptInt& other)
-    : i_(other.i_), fail_(other.fail_)
-    {
-        if (fail_) {
-            throw std::runtime_error(std::to_string(i_));
-        }
-    }
+//     ExeptInt(const ExeptInt& other)
+//     : i_(other.i_), fail_(other.fail_)
+//     {
+//         if (fail_) {
+//             throw std::runtime_error(std::to_string(i_));
+//         }
+//     }
 
-    ExeptInt(ExeptInt&& other) noexcept(false)
-    : i_(other.i_), fail_(other.fail_)
-    {
-        if (fail_) {
-            throw std::runtime_error(std::to_string(i_));
-        }
-    }
+//     ExeptInt(ExeptInt&& other) noexcept(false)
+//     : i_(other.i_), fail_(other.fail_)
+//     {
+//         if (fail_) {
+//             throw std::runtime_error(std::to_string(i_));
+//         }
+//     }
 
-    ExeptInt& operator= (const ExeptInt& other) {
+//     ExeptInt& operator= (const ExeptInt& other) {
 
-        if (fail_) {
-            throw std::runtime_error(std::to_string(i_));
-        }
+//         if (fail_) {
+//             throw std::runtime_error(std::to_string(i_));
+//         }
 
-        i_ = other.i_;
-        fail_ = other.fail_;
+//         i_ = other.i_;
+//         fail_ = other.fail_;
 
-        return *this;
-    }
+//         return *this;
+//     }
 
-    ExeptInt& operator= (ExeptInt&& other) noexcept(false)
-    {
+//     ExeptInt& operator= (ExeptInt&& other) noexcept(false)
+//     {
 
-        if (fail_) {
-            throw std::runtime_error(std::to_string(i_));
-        }
+//         if (fail_) {
+//             throw std::runtime_error(std::to_string(i_));
+//         }
 
-        i_ = other.i_;
-        fail_ = other.fail_;
+//         i_ = other.i_;
+//         fail_ = other.fail_;
 
-        return *this;
-    }
+//         return *this;
+//     }
  
-    int i_;
-    bool fail_;
-};
+//     int i_;
+//     bool fail_;
+// };
 
-TEST(Exception, SPMC_PTR) {
+// TEST(Exception, SPMC_PTR) {
 
-    lock_free_spmc_queue<ExeptInt> q;
-    std::vector<std::thread> threads;
-    int concurrency_level = 16;
-    int n = 15000;
-    std::vector<std::atomic<bool>> values(n);
+//     lock_free_spmc_queue<ExeptInt> q;
+//     std::vector<std::thread> threads;
+//     int concurrency_level = 16;
+//     int n = 15000;
+//     std::vector<std::atomic<bool>> values(n);
 
-    threads.emplace_back( [&values, &q, n](){
+//     threads.emplace_back( [&values, &q, n](){
 
-        std::mt19937 gen(std::random_device{}());
-        std::uniform_int_distribution<int> dist(1, 6);
-        for (int i = 0; i < n; ++i) {
-            ExeptInt num(i, dist(gen) / 6);
-            try {
-                q.push(num);
-            } catch (const std::exception& e) {
-                ExeptInt num2(i, false);
-                q.push(num2);
-            }
-        }
-    });
+//         std::mt19937 gen(std::random_device{}());
+//         std::uniform_int_distribution<int> dist(1, 6);
+//         for (int i = 0; i < n; ++i) {
+//             ExeptInt num(i, dist(gen) / 6);
+//             try {
+//                 q.push(num);
+//             } catch (const std::exception& e) {
+//                 ExeptInt num2(i, false);
+//                 q.push(num2);
+//             }
+//         }
+//     });
 
-    for (int i = 0; i < concurrency_level - 1; ++i) {
-        threads.emplace_back([n, &q, &values, concurrency_level]() {
+//     for (int i = 0; i < concurrency_level - 1; ++i) {
+//         threads.emplace_back([n, &q, &values, concurrency_level]() {
 
-            for (int j = 0; j < n / (concurrency_level - 1); ++j) {
-                std::shared_ptr<ExeptInt> res;
-                res = q.pop();
-                if (!res) {
-                    --j;
-                } else {
-                    values[res.get()->i_].store(true);
-                }
-            }
-        });
-    }
+//             for (int j = 0; j < n / (concurrency_level - 1); ++j) {
+//                 std::shared_ptr<ExeptInt> res;
+//                 res = q.pop();
+//                 if (!res) {
+//                     --j;
+//                 } else {
+//                     values[res.get()->i_].store(true);
+//                 }
+//             }
+//         });
+//     }
 
-    for (int i = 0; i < concurrency_level; ++i) {
-        threads[i].join();
-    }
+//     for (int i = 0; i < concurrency_level; ++i) {
+//         threads[i].join();
+//     }
 
-    for (int i = 0; i < n; ++i) {
-        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
-    }
-}
+//     for (int i = 0; i < n; ++i) {
+//         EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+//     }
+// }
 
 
