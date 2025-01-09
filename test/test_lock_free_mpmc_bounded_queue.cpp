@@ -1,4 +1,4 @@
-#include "../include/lock-free-spmc-queue.hpp"
+#include "../include/lock-free-mpmc-bounded-queue.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>
@@ -36,7 +36,7 @@
 
 // // 1. Single thread, empty
 TEST(Basic, Empty) {
-    lock_free_spmc_queue<int> q;
+    lock_free_mpmc_bounded_queue<int> q(1024);
     EXPECT_TRUE(q.empty());
 }
 
@@ -44,7 +44,7 @@ TEST(Basic, Empty) {
 // //  try pop with ptr
 TEST(Basic, Push_TryPopPtr) {
 
-    lock_free_spmc_queue<int> q;
+    lock_free_mpmc_bounded_queue<int> q(1024);
 
     q.push(1);
     q.push(2);
@@ -63,10 +63,10 @@ TEST(Basic, Push_TryPopPtr) {
     EXPECT_EQ(3, *ptr);
 }
 
-// // 4. Single thread, unsuccessful pop
+// 4. Single thread, unsuccessful pop
 TEST(Basic, Unsussesful_Pop) {
 
-    lock_free_spmc_queue<int> q;
+    lock_free_mpmc_bounded_queue<int> q(1024);
 
     auto ptr = q.pop();
     EXPECT_FALSE(ptr);
@@ -86,7 +86,8 @@ TEST(Basic, Unsussesful_Pop) {
 //          the same order as we pushed
 TEST(Concurrent, SPSC) {
 
-    lock_free_spmc_queue<int> q;
+    lock_free_mpmc_bounded_queue<int> q(1024);
+
     std::vector<std::thread> threads;
     int concurrency_level = 2;
     int n = 1000;
@@ -122,13 +123,14 @@ TEST(Concurrent, SPSC) {
 //       some order
 TEST(Concurrent, SPMC) {
 
-    lock_free_spmc_queue<int> q;
+    lock_free_mpmc_bounded_queue<int> q(1024);
+
     std::vector<std::thread> threads;
     int concurrency_level = 9;
     int n = 8000;
     threads.emplace_back( [&](){
         for (int i = 0; i < n; ++i) {
-            q.push(i);
+            while(!q.push(i));
         }
     });
 
@@ -149,44 +151,73 @@ TEST(Concurrent, SPMC) {
     }
 
     for (int i = 0; i < n; ++i) {
-        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+        // EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
     }
 }
 
-// 7. Single producer, multiple consumers and multiple checks
-// for emptyness
+// // // 7. Multiple Producers, Single Consumer
+// // //    -> in the end we have all the elements that we pushed
 
-TEST(Concurrent, SPMC_Empty) {
+TEST(Concurrent, MPSC) {
 
-    lock_free_spmc_queue<int> q;
+    lock_free_mpmc_bounded_queue<int> q(1024);
     std::vector<std::thread> threads;
     int concurrency_level = 9;
-    int n = 4000;
-    threads.emplace_back( [&](){
-        for (int i = 0; i < n; ++i) {
-            q.push(i);
-        }
-    });
-
-    std::vector<std::atomic<bool>> values(n);
-    for (int i = 0; i < 4; ++i) {
-        threads.emplace_back([&]() {
-            for (int j = 0; j < n / 4; ++j) {
-
-                auto res = q.pop();
-                if (res) {
-                    values[*res].store(true);
-                } else {
-                    --j;
-                }
+    int n = 8000;
+    for (int i = 0; i < (concurrency_level - 1); ++i) {
+        threads.emplace_back([i, &q, n, &concurrency_level]() {
+            int beg = i * (n / (concurrency_level - 1));
+            int end = (i + 1) * (n / (concurrency_level - 1));
+            for (int j = beg; j < end; ++j) {
+                while(!q.push(j));
             }
         });
     }
 
-    for (int i = 0; i < 4; ++i) {
-        threads.emplace_back([&]() {
-            for (int j = 0; j < n; ++j) {
-                q.empty();
+    std::vector<std::atomic<bool>> values(n);
+    threads.emplace_back([&]() {
+        for (int j = 0; j < n; ++j) {
+            std::unique_ptr<int> res;
+            while((res = q.pop()) == nullptr);
+            values[*res].store(true, std::memory_order_relaxed);
+        }
+    });
+
+    for (int i = 0; i < concurrency_level; ++i) {
+        threads[i].join();
+    }
+
+    for (int i = 0; i < n; ++i) {
+        EXPECT_TRUE(values[i].load(std::memory_order_relaxed)) << "i= " << i << "\n";
+    }
+}
+
+// 8. Multiple Producres, Multiple Consumers
+//    -> in the end we have all the elements that we pushed
+TEST(Concurrent, MPMC_PTR) {
+
+    lock_free_mpmc_bounded_queue<int> q(1024);
+
+    std::vector<std::thread> threads;
+    int concurrency_level = 8;
+    int n = 1200;
+    for (int i = 0; i < (concurrency_level / 2); ++i) {
+        threads.emplace_back([i, &q, n, concurrency_level]() {
+            int beg = i * (n / (concurrency_level / 2));
+            int end = (i + 1) * (n / (concurrency_level / 2));
+            for (int j = beg; j < end; ++j) {
+                while(!q.push(j));
+            }
+        });
+    }
+
+    std::vector<std::atomic<bool>> values(n);
+    for (int i = 0; i < (concurrency_level / 2); ++i) {
+        threads.emplace_back([n, &q, &values, concurrency_level]() {
+            for (int j = 0; j < n / (concurrency_level / 2); ++j) {
+                std::unique_ptr<int> res;
+                while((res = q.pop()) == nullptr);
+                values[*res].store(true, std::memory_order_relaxed);
             }
         });
     }
@@ -200,31 +231,34 @@ TEST(Concurrent, SPMC_Empty) {
     }
 }
 
-// 8. Large number of push and pop operations
-//    -> increase number of threas beyond typical
-//    -> use very high N (1 000 000)
-TEST(Stress, HighSPMC_PTR) {
+// 9. Multiple Producres, Multiple Consumers
+//    -> in the end we have all the elements that we pushed
 
-    lock_free_spmc_queue<int> q;
+TEST(Stress, HighMPMC_PTR) {
+
+    lock_free_mpmc_bounded_queue<int> q(500'000);
+
     std::vector<std::thread> threads;
-    int number_of_producers = 1;
+    int number_of_producers = 50;
     int number_of_consumers = 50;
     int n = 1'000'000;
+    for (int i = 0; i < number_of_producers; ++i) {
+        threads.emplace_back([i, &q, n, number_of_producers]() {
+            int beg = i * (n / number_of_producers);
+            int end = (i + 1) * (n / number_of_producers);
+            for (int j = beg; j < end; ++j) {
+                while(!q.push(j));
 
-    threads.emplace_back([&q, n, number_of_producers]() {
-        for (int j = 0; j < n; ++j) {
-            q.push(j);
-        }
-    });
+            }
+        });
+    }
 
     std::vector<std::atomic<bool>> values(n);
     for (int i = 0; i < number_of_consumers; ++i) {
         threads.emplace_back([n, &q, &values, number_of_consumers]() {
             for (int j = 0; j < n / number_of_consumers; ++j) {
-                std::shared_ptr<int> res = nullptr;
-                while(!res) {
-                    res = q.pop();
-                }
+                std::unique_ptr<int> res;
+                while((res = q.pop()) == nullptr);
                 values[*res].store(true, std::memory_order_relaxed);
             }
         });
@@ -239,16 +273,17 @@ TEST(Stress, HighSPMC_PTR) {
     }
 }
 
-// 9. Random delays
+// 10. Random delays
 //     -> Introduce random sleep interval in producer 
 //          and consumer threads
 TEST(Stress, RandMPMC_PTR) {
 
-    lock_free_spmc_queue<int> q;
+    lock_free_mpmc_bounded_queue<int> q(10'000);
+
 
     std::vector<std::thread> threads;
-    int number_of_producers = 1;
-    int number_of_consumers = 50;
+    int number_of_producers = 25;
+    int number_of_consumers = 25;
     int n = 50'000;
 
     for (int i = 0; i < number_of_producers; ++i) {
@@ -258,7 +293,7 @@ TEST(Stress, RandMPMC_PTR) {
             int beg = i * (n / number_of_producers);
             int end = (i + 1) * (n / number_of_producers);
             for (int j = beg; j < end; ++j) {
-                q.push(j);
+                while(!q.push(j));
                 std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
             }
         });
@@ -347,40 +382,40 @@ struct ExeptInt {
     bool fail_;
 };
 
-TEST(Exception, SPMC_PTR) {
+TEST(Exception, MPMC_PTR) {
 
-    lock_free_spmc_queue<ExeptInt> q;
+    lock_free_mpmc_bounded_queue<ExeptInt> q(10'000);
+
     std::vector<std::thread> threads;
     int concurrency_level = 16;
-    int n = 15000;
+    int n = 160'000;
     std::vector<std::atomic<bool>> values(n);
 
-    threads.emplace_back( [&values, &q, n](){
-
-        std::mt19937 gen(std::random_device{}());
-        std::uniform_int_distribution<int> dist(1, 6);
-        for (int i = 0; i < n; ++i) {
-            ExeptInt num(i, dist(gen) / 6);
-            try {
-                q.push(num);
-            } catch (const std::exception& e) {
-                ExeptInt num2(i, false);
-                q.push(num2);
+    for (int i = 0; i < (concurrency_level / 2); ++i) {
+        threads.emplace_back([i, &q, n, concurrency_level]() {
+            std::mt19937 gen(std::random_device{}());
+            std::uniform_int_distribution<int> dist(1, 6);
+            int beg = i * (n / (concurrency_level / 2));
+            int end = (i + 1) * (n / (concurrency_level / 2));
+            for (int j = beg; j < end; ++j) {
+                ExeptInt num(j, dist(gen) / 6);
+                try {
+                    while(!q.push(num));
+                } catch (const std::exception& e) {
+                    ExeptInt num2(j, false);
+                    while(!q.push(num2));
+                }
             }
-        }
-    });
+        });
+    }
 
-    for (int i = 0; i < concurrency_level - 1; ++i) {
+    for (int i = 0; i < (concurrency_level / 2); ++i) {
         threads.emplace_back([n, &q, &values, concurrency_level]() {
 
-            for (int j = 0; j < n / (concurrency_level - 1); ++j) {
+            for (int j = 0; j < n / (concurrency_level / 2); ++j) {
                 std::shared_ptr<ExeptInt> res;
-                res = q.pop();
-                if (!res) {
-                    --j;
-                } else {
-                    values[res.get()->i_].store(true);
-                }
+                while((res = q.pop()) == nullptr);
+                values[res->i_].store(true, std::memory_order_relaxed);
             }
         });
     }

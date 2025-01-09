@@ -33,3 +33,21 @@ target_link_libraries(bench_lock_free_spmc_queue
         atomic               
         benchmark::benchmark_main 
 )
+
+
+add_executable(bench_lock_free_mpsc_queue bench_lock_free_mpsc_queue.cpp)
+
+target_link_libraries(bench_lock_free_mpsc_queue 
+    PRIVATE
+        LockFree  
+        atomic               
+        benchmark::benchmark_main 
+)
+
+add_executable(bench_lock_free_mpmc_bounded_queue bench_lock_free_mpmc_bounded_queue.cpp)
+
+target_link_libraries(bench_lock_free_mpmc_bounded_queue 
+    PRIVATE
+        LockFree  
+        benchmark::benchmark_main 
+)

@@ -164,7 +164,14 @@ void lock_free_spmc_queue<T>::increase_external(external_count& old_count) {
 template<class T>
 void lock_free_spmc_queue<T>::Node::ref_release() {
 
-    if (internal_count_.fetch_sub(1) == 1) {
+    int old_internal = internal_count_.load();
+    int internal_new;
+    do {
+        internal_new = old_internal;
+        --internal_new;
+    } while (!internal_count_.compare_exchange_strong(old_internal, internal_new));
+
+    if (internal_new == 0) {
         delete this;
     }
 }
@@ -192,7 +199,8 @@ std::unique_ptr<T> lock_free_spmc_queue<T>::pop() {
         }
         external_count next_in_list = ptr->next_.load();
         if (head_.compare_exchange_strong(old_count, next_in_list)) {
-            T* const res = ptr->data_.exchange(nullptr);
+            T* const res = ptr->data_.load();
+            ptr->data_.store(nullptr);
             free_external(old_count);
             return std::unique_ptr<T>(res);
         }

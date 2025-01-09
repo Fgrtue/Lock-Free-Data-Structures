@@ -30,10 +30,18 @@ target_link_libraries(test_lock_free_spmc_queue PRIVATE
     LockFree
 )
 
-add_executable(test_lock_free_mpmc_queue test_lock_free_mpmc_queue.cpp)
+add_executable(test_lock_free_mpsc_queue test_lock_free_mpsc_queue.cpp)
 
-target_link_libraries(test_lock_free_mpmc_queue PRIVATE
+target_link_libraries(test_lock_free_mpsc_queue PRIVATE
     gtest_main
     atomic
+    LockFree
+)
+
+
+add_executable(test_lock_free_mpmc_bounded_queue test_lock_free_mpmc_bounded_queue.cpp)
+
+target_link_libraries(test_lock_free_mpmc_bounded_queue PRIVATE
+    gtest_main
     LockFree
 )

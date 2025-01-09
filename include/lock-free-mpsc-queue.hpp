@@ -54,7 +54,7 @@ For pop
 */
 
 template <class T>
-class lock_free_mpmc_queue {
+class lock_free_mpsc_queue {
 
 private:
 
@@ -66,8 +66,8 @@ private:
     };
 
     struct internal_count {
-        uint32_t internal_count_ : 30;
-        uint32_t ext_counters_    : 2;
+        unsigned internal_count_ : 30;
+        unsigned ext_counters_    : 2;
     };
 
     struct Node {
@@ -85,6 +85,8 @@ private:
             data_.store(nullptr);
         }
 
+        void ref_release();
+
         std::atomic<external_count> next_;
         // # 1. This part should be changed for 
         // struct with counter and counter for external counts
@@ -96,8 +98,6 @@ private:
 
     void increase_external(std::atomic<external_count>&, external_count&);
 
-    void ref_release(Node*);
-
     void free_external(external_count& old_count);
 
     std::atomic<external_count> head_;
@@ -105,25 +105,23 @@ private:
 
 public:
 
-    lock_free_mpmc_queue()
+    lock_free_mpsc_queue()
     {
         Node* node = new Node();
         external_count cnt;
         cnt.node_ = node;
-        cnt.external_count_ = 1;
+        cnt.external_count_ = 2;
         tail_.store(cnt);
         head_.store(cnt);
     }
 
-    lock_free_mpmc_queue(const lock_free_mpmc_queue&) = delete;
-    lock_free_mpmc_queue& operator = (const lock_free_mpmc_queue&) = delete;
+    lock_free_mpsc_queue(const lock_free_mpsc_queue&) = delete;
+    lock_free_mpsc_queue& operator = (const lock_free_mpsc_queue&) = delete;
 
-    ~lock_free_mpmc_queue() {
-            
+    ~lock_free_mpsc_queue() {
+
         while(pop());
         assert(empty());
-        assert(!head_.load().node_->next_.load().node_);
-        assert(!tail_.load().node_->next_.load().node_);
 
         delete head_.load().node_;
     }
@@ -142,46 +140,45 @@ public:
 };
 
 template<class T>
-void lock_free_mpmc_queue<T>::increase_external(std::atomic<external_count>& target,
+void lock_free_mpsc_queue<T>::increase_external(std::atomic<external_count>& target,
                                                 external_count& old_count) {
 
     external_count count_new;
     do {
         count_new = old_count;
         ++count_new.external_count_;
-    } while (!target.compare_exchange_strong(old_count, count_new,
-            std::memory_order_acq_rel, std::memory_order_relaxed));
+    } while (!target.compare_exchange_strong(old_count, count_new));
     old_count.external_count_ = count_new.external_count_;
 }
 
 template<class T>
-void lock_free_mpmc_queue<T>::ref_release(Node* ptr) {
+void lock_free_mpsc_queue<T>::Node::ref_release() {
 
     // # 6. Now we cannot just substract, so we need
     // CAS loop to decrease internal count structure by 1
+    internal_count count_old = counter_.load();
     internal_count count_new;
-    internal_count count_old = ptr->counter_.load();
     do {
         count_new = count_old;
         --count_new.internal_count_;
-    } while (!ptr->counter_.compare_exchange_strong(count_old, count_new));
+    } while (!counter_.compare_exchange_strong(count_old, count_new));
     // # 7. In the end we check if internal counter is 0 and number
     // of external counters is 2
-    if (count_new.internal_count_ == 0 && count_new.ext_counters_ == 0) {
-        delete ptr;
+    if (!count_new.internal_count_ && !count_new.ext_counters_) {
+        delete this;
     }
 }
 
 template<class T>
-void lock_free_mpmc_queue<T>::free_external(external_count& extr) {
+void lock_free_mpsc_queue<T>::free_external(external_count& extr) {
 
-    Node* ptr = extr.node_;
+    Node* const ptr = extr.node_;
     int const internal_upd = extr.external_count_ - 2;
     // # 8. Save old counter
     // Decrease the number of external counters
     // And update the internal
-    internal_count count_new;
     internal_count count_old = ptr->counter_.load();
+    internal_count count_new;
     do {
         count_new = count_old;
         --count_new.ext_counters_;
@@ -190,20 +187,20 @@ void lock_free_mpmc_queue<T>::free_external(external_count& extr) {
 
     // # 9. In case internal counter is 0 and the number of external counters is 0
     // delete pointer 
-    if (count_new.internal_count_ == 0 && count_new.ext_counters_ == 0) {
+    if (!count_new.internal_count_ && !count_new.ext_counters_) {
         delete ptr;
     }
 }
 
 template<class T> 
-void lock_free_mpmc_queue<T>::push(T val) {
+void lock_free_mpsc_queue<T>::push(T val) {
 
     // # 3. Instead of putting pointer in shared_ptr
     // put it in unique_ptr
     std::unique_ptr<T> data_new(new T(val));
     external_count count_new;
-    count_new.external_count_ = 1;
     count_new.node_ = new Node();
+    count_new.external_count_ = 1;
     external_count old_tail = tail_.load();
     // # 4. Here we swtich to a similar loop as in pop
     // In the CAS if statement set the pointer of node that
@@ -219,12 +216,12 @@ void lock_free_mpmc_queue<T>::push(T val) {
             data_new.release();
             break ;
         }
-        ref_release(old_tail.node_);
+        old_tail.node_->ref_release();
     }
 }
 
 template<class T> 
-std::unique_ptr<T> lock_free_mpmc_queue<T>::pop() {
+std::unique_ptr<T> lock_free_mpsc_queue<T>::pop() {
 
     external_count old_head = head_.load();
     for(;;) {
@@ -232,7 +229,7 @@ std::unique_ptr<T> lock_free_mpmc_queue<T>::pop() {
         increase_external(head_, old_head);
         Node* const ptr = old_head.node_;
         if (ptr == tail_.load().node_) {
-            ref_release(ptr);
+            ptr->ref_release();
             return std::unique_ptr<T>();
         }
         if (head_.compare_exchange_strong(old_head, ptr->next_)) {
@@ -240,13 +237,13 @@ std::unique_ptr<T> lock_free_mpmc_queue<T>::pop() {
             free_external(old_head);
             return std::unique_ptr<T>(res);
         }
-        ref_release(ptr);
+        ptr->ref_release();
     }
 }
 
 
 template<class T> 
-bool lock_free_mpmc_queue<T>::empty() {
+bool lock_free_mpsc_queue<T>::empty() {
 
     external_count head_count = head_.load();
     external_count tail_count = tail_.load();
@@ -254,12 +251,12 @@ bool lock_free_mpmc_queue<T>::empty() {
         increase_external(head_, head_count);
         increase_external(tail_, tail_count);
         if (head_count.node_ == tail_count.node_) {
-            ref_release(head_count.node_);
-            ref_release(tail_count.node_);
+            head_count.node_->ref_release();
+            tail_count.node_->ref_release();
             return true;
         }
-        ref_release(head_count.node_);
-        ref_release(tail_count.node_);
+        head_count.node_->ref_release();
+        tail_count.node_->ref_release();
     }
     return false;
 }

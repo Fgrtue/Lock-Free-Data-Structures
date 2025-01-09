@@ -4,11 +4,16 @@ cmake_minimum_required(VERSION 3.8)
 # 2. Define variable for the project name
 set(PROJECT_NAME LockFree)
 
+# Set compiler
+
 project(${PROJECT_NAME} C CXX)
+
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 
 # 3. Set C and C++ standards
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
+
 
 # 4. Enables position inpdendent code
 # is compiled in a way that allows the generated machine code
