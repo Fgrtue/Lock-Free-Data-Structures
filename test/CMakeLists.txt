@@ -45,3 +45,17 @@ target_link_libraries(test_lock_free_mpmc_bounded_queue PRIVATE
     gtest_main
     LockFree
 )
+
+add_executable(test_hazard_pointers test_hazard_pointers.cpp)
+
+target_link_libraries(test_hazard_pointers PRIVATE
+    gtest_main
+    LockFree
+)
+
+add_executable(test_lock_free_stack test_lock_free_stack.cpp)
+
+target_link_libraries(test_lock_free_stack PRIVATE
+    gtest_main
+    LockFree
+)

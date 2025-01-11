@@ -1,5 +1,6 @@
 #include <atomic>
 #include <memory>
+#include <assert.h>
 
 /*
     Hazard pointers plan
@@ -27,15 +28,36 @@
             -> save nodes that we cannot delete
 */
 
-template<class T, class N>
+template<class N>
 class hazard_pointers {
+
+    public:
+
+    hazard_pointers() : hazards_list_(nullptr), reclamation_list_(nullptr) {}
+    hazard_pointers(const hazard_pointers& other) = delete;
+    hazard_pointers& operator=(const hazard_pointers& other) = delete;
+
+    ~hazard_pointers() {
+
+        HP* hzrd_ptr = hazards_list_.load();
+        HP* hzrd_next_ptr;
+        while (hzrd_ptr)
+        {
+            hzrd_next_ptr = hzrd_ptr->next_;
+            assert(!hzrd_ptr->active_.load());
+            delete hzrd_ptr;
+            hzrd_ptr = hzrd_next_ptr;
+        }
+        hazards_list_.store(nullptr);
+        delete_nodes_with_no_hazards();
+    }
 
     struct HP {
 
         HP(): ptr_(nullptr), active_(false), next_(nullptr) {}
 
         HP*                 next_;
-        std::atomic<T*>     ptr_;
+        std::atomic<N*>     ptr_;
         std::atomic<bool>   active_;
     };
 
@@ -43,12 +65,14 @@ class hazard_pointers {
 
     void release_hazard(HP*);
 
+    bool in_hazard(N*);
+
     struct node_recl {
 
-        node_recl(N* data): data(data), next_(nullptr) {} 
+        node_recl(N* data): data_(data), next_(nullptr) {} 
 
-        void delete_node(N* p) {
-            delete std::static_cast<N*>(p);
+        void delete_node() {
+            delete static_cast<N*>(data_);
         }
 
         N*   data_;
@@ -61,62 +85,81 @@ class hazard_pointers {
 
     void delete_nodes_with_no_hazards();
 
+    private:
+
     std::atomic<HP*> hazards_list_;
     std::atomic<node_recl*> reclamation_list_;
 };
 
-template<class T, class N>
-typename hazard_pointers<T, N>::HP*
-hazard_pointers<T, N>::acquire_hazard() {
+template<class N>
+typename hazard_pointers<N>::HP*
+hazard_pointers<N>::acquire_hazard() {
 
     HP* ptr = hazards_list_.load();
+    bool expect = false;
     for(; ptr ; ptr = ptr->next_) {
 
-        if (ptr->active_.compare_exchange_strong(false, true)) {
+        if (ptr->active_.compare_exchange_strong(expect, true)) {
             return ptr;
         }
     }
     HP* hazard_new = new HP();
-    hazard_new->active_.store(true)
+    hazard_new->active_.store(true);
     do {
         hazard_new->next_ = hazards_list_.load();
     } while (!hazards_list_.compare_exchange_strong(hazard_new->next_, hazard_new));
     return hazard_new;
 }
 
-template<class T, class N>
-void hazard_pointers<T, N>::release_hazard(HP* hp) {
+template<class N>
+void hazard_pointers<N>::release_hazard(HP* hp) {
     hp->ptr_.store(nullptr);
     hp->active_.store(false);
 }
 
-template<class T, class N>
-void hazard_pointers<T, N>::insert_reclaim(node_recl* reclaim_new) {
+template<class N>
+bool hazard_pointers<N>::in_hazard(N* data) {
+
+    HP* cur = hazards_list_.load();
+    for (;cur; cur = cur->next_) {
+        assert(cur);
+        if (cur->ptr_.load() == data) {
+            return true;
+        }
+    }
+    return false;
+}
+
+
+template<class N>
+void hazard_pointers<N>::insert_reclaim(node_recl* reclaim_new) {
 
     reclaim_new->next_ = reclamation_list_.load();
     while (!reclamation_list_.compare_exchange_strong(reclaim_new->next_, reclaim_new));
 }
 
-template<class T, class N>
-void hazard_pointers<T, N>::reclaim_later(N* node) {
+template<class N>
+void hazard_pointers<N>::reclaim_later(N* node) {
 
-    node_recl* reclaim_new = new (node_recl(node));
+
+    node_recl* reclaim_new = new node_recl(node);
     insert_reclaim(reclaim_new);
 }
 
-template<class T, class N>
-void hazard_pointers<T, N>::delete_nodes_with_no_hazards() {
+template<class N>
+void hazard_pointers<N>::delete_nodes_with_no_hazards() {
+
     node_recl* list_ptr = reclamation_list_.exchange(nullptr);
     node_recl* next_list;
     while (list_ptr) {
         next_list = list_ptr->next_;
-        if (in_hazard(list_ptr)) {
+        if (in_hazard(list_ptr->data_)) {
             insert_reclaim(list_ptr);
         } else {
             list_ptr->delete_node();
+            delete list_ptr;
         }
         list_ptr = next_list;
     }
-    
 }
 
