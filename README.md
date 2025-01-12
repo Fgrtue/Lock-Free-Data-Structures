@@ -12,7 +12,7 @@ Let's first look at the main folders:
 
 ## How to build
 
-First, you have to get frameworks for runing tests and benchmarks. I used `googletest`(https://github.com/google/googletest) and `googlebenchmark` (https://github.com/google/benchmark). Add them to the repository that you pulled, build them and don't forget to write correct names in `CMakeLists.txt` in the root of the repository.
+First, you have to get frameworks for running tests and benchmarks. I used `googletest`(https://github.com/google/googletest) and `googlebenchmark` (https://github.com/google/benchmark). Add them to the repository that you pulled, build them and don't forget to write the correct names in `CMakeLists.txt` in the root of the repository.
 
 ```
 # 7. Add the google test subdirectory
@@ -55,7 +55,7 @@ Let us take a closer (but not too close) look at the `include` folder. It contai
   - Queue with better locking techniques, allowing more concurrency
 2. Three implementations of lock-free queues
   - **SPSC** queue that is incredibly quick, but is guaranteed to work only with one thread per operation
-  - **SPMC** queue that is quick and can handle multiple producers threads
+  - **SPMC** queue that is quick and can handle multiple producer threads
   - **MPMC** queue that is also very fast, but restricted in the number of elements that it can store
 3. BONUS implementation of non-lock-free and lock-free stack
    - The only reason for them to be called bonus is that they are not guaranteed to work under any concurrency
@@ -69,7 +69,7 @@ Let us take a closer (but not too close) look at the `include` folder. It contai
    details of the implementation several times to make sure that I was following all the key steps, I was experiencing a data race starting
    from `2` producers and `3` consumers.
 
-As mentioned above, two well-known techniques were applied in order to write the some aforementioned lock-free data structures:
+As mentioned above, two well-known techniques were applied in order to write the some of the aforementioned lock-free data structures:
 - Reference counting (used in **SPMC** queue)
 - Hazard pointers (used in **lock-free-stack**)
 
@@ -114,4 +114,33 @@ The results of benchmarks are written in the folder `results_benchmarks`. There 
 
 ![image](https://github.com/user-attachments/assets/dd678c99-6f8f-49c5-81f1-42b60c3961ff)
 
+**Conclusion:** Here we have to stress that this is not a fair test, due to the fact that the atomic changes inside `SPMC` queue are *not lock-free*. Therefore, both of the queues are in fact non-lock-free and don't show significant improvement in the benchmarks.
 
+#### Std queue vs Lock-free MPMC queue
+
+- **Std queue**
+
+![image](https://github.com/user-attachments/assets/d71910c1-5451-4490-a7fc-a790d718291c)
+
+- **MPMC queue**
+
+![image](https://github.com/user-attachments/assets/3669c487-2159-4d2c-baca-5fdec16844a2)
+
+**Conclusion:** This is the finest example of a lock-free structure of this project. `MPMC` bounded queue kicks the insides out of the `std` queue in all the benchmarks.
+
+#### BONUS Std stack vs Lock-free stack
+
+- **Std stack**
+
+![image](https://github.com/user-attachments/assets/fe3b2c12-fefe-484b-bb76-163a50c4329b)
+
+- **Lock-free stack**
+
+![image](https://github.com/user-attachments/assets/0a6f52b4-7993-4f8e-838d-cdec43c66c22)
+
+
+**Conclusion:** Unfortunately this one isn't much better than the lock-free `SPMC` queues. One of the issues (which is also the case for other queues) is the usage of a single-threaded memory allocator. I decided to leave this part of research into the details of the implementation of multithreaded memory allocators for the future.
+
+## Some words about tests and benchmarks
+
+In the tests, we went from less concurrent to more concurrent test cases. For almost all the tests we did a high concurrent test with `50` threads pushing, `50` threads popping, and `1` million elements. We also ensured that our data structures are exception-safe but testing them with elements that throw exceptions in copy and move constructors. In benchmarks, we measured the latency of each operation separately, as well as the total time for `100'000 * NumberOfThreads` pushes or pops. Another measurement is related to the throughput of data structure, which is specified in the `items_per_second` column.
