@@ -1,0 +1,12 @@
+-------------------------------------------------------------------
+Benchmark                         Time             CPU   Iterations
+-------------------------------------------------------------------
+Push/real_time/threads:1       80.8 ns         80.6 ns      8639525
+Push/real_time/threads:2        150 ns          150 ns      4571170
+Push/real_time/threads:4        371 ns          370 ns      1881976
+Pop/real_time/threads:1        28.6 ns         28.6 ns     23574159
+Pop/real_time/threads:2         145 ns          145 ns      4748814
+Pop/real_time/threads:4        1267 ns         1266 ns       400000
+MPMC/real_time/threads:2      51013 us        51010 us           14 items_per_second=1.9603M/s
+MPMC/real_time/threads:4      74190 us        74020 us           16 items_per_second=1.34789M/s
+MPMC/real_time/threads:8     129570 us       128985 us            8 items_per_second=771.785k/s

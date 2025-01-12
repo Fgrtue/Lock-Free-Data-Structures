@@ -1,0 +1,25 @@
+--------------------------------------------------------------------
+Benchmark                          Time             CPU   Iterations
+--------------------------------------------------------------------
+Push/real_time/threads:1        63.9 ns         63.7 ns     10395337
+Push/real_time/threads:2         471 ns          468 ns      1531434
+Push/real_time/threads:4         953 ns          803 ns       685264
+Push/real_time/threads:8        2935 ns         2360 ns       226536
+Push/real_time/threads:16       6322 ns         3027 ns       136160
+Push/real_time/threads:32      10971 ns         2810 ns        70144
+Pop/real_time/threads:1         36.6 ns         36.6 ns     19081510
+Pop/real_time/threads:2          267 ns          265 ns      2179444
+Pop/real_time/threads:4          891 ns          728 ns       696384
+Pop/real_time/threads:8         3105 ns         2501 ns       210616
+Pop/real_time/threads:16        6554 ns         3048 ns       127440
+Pop/real_time/threads:32       12270 ns         3142 ns        59936
+SPMC/real_time/threads:2       43484 us        43313 us           22 items_per_second=2.29969M/s
+SPMC/real_time/threads:4       62894 us        51845 us           12 items_per_second=1.58997M/s
+SPMC/real_time/threads:8      272634 us       212178 us            8 items_per_second=366.792k/s
+SPMC/real_time/threads:16     645399 us       319958 us           16 items_per_second=154.943k/s
+SPMC/real_time/threads:32    1293562 us       328461 us           32 items_per_second=77.3059k/s
+MPMC/real_time/threads:2       48772 us        48239 us           20 items_per_second=2.05035M/s
+MPMC/real_time/threads:4       75605 us        62657 us           12 items_per_second=1.32267M/s
+MPMC/real_time/threads:8      187068 us       119598 us            8 items_per_second=534.566k/s
+MPMC/real_time/threads:16     472557 us       253161 us           16 items_per_second=211.615k/s
+MPMC/real_time/threads:32     990967 us       317261 us           32 items_per_second=100.912k/s
