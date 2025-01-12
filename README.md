@@ -90,14 +90,15 @@ The results of benchmarks are written in the folder `results_benchmarks`. There 
 
 ![image](https://github.com/user-attachments/assets/9f22ac93-b6a5-4c49-8dc4-aabe7e3ebee7)
 
-**Conclusion:** the only improvement is seen at MPMC with `8` threads in total. This means, `4` threads for producers and `4` threads for consumers.
+**Conclusion:** Some improvement is seen at MPMC with `8` threads in total. This means, `4` threads for producers and `4` threads for consumers. But even in this case the improvement was not that significant.
 
 #### Std queue vs Lock-free SPSC queue
 
 - **Std queue**
    
-![image](https://github.com/user-attachments/assets/92d6b989-684b-43b3-af1b-abf92ff48ea7)
+![image](https://github.com/user-attachments/assets/60ca8bf7-da44-407f-9551-8e38c433a94d)
 
-- **
+- **SPSC queue**
 
-   
+![image](https://github.com/user-attachments/assets/f49c1845-dd33-4fb5-9354-bce6940502e3)
+
