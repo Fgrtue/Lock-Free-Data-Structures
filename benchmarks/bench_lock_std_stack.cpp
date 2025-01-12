@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include "../include/lock-free-stack.hpp"
+#include "../include/lock-std-stack.hpp"
 
 class StackFix : public benchmark::Fixture {
     
@@ -23,7 +23,7 @@ public:
         }
     }
 
-  lock_free_stack<int> q;
+  lock_std_stack<int> q;
   static constexpr int kNumItems = 100000;
 };
 

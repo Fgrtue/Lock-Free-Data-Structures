@@ -54,25 +54,20 @@ std::shared_ptr<T>  lock_free_stack<T>::pop() {
     typename  hazard_pointers<Node>::HP* hp = hazard_ptrs_.acquire_hazard();
     Node* old_head = head_.load();
     do {
-        Node* tmp;
-        do {
-            tmp = old_head;
-            hp->ptr_.store(old_head);
-            old_head = head_.load();
-        } while(old_head != tmp);
+        hp->ptr_.store(old_head);
+        Node* tmp = head_.load();
+        if (tmp != old_head) {
+            continue;  // Restart if head changes
+        }
     } while(old_head && !head_.compare_exchange_strong(old_head, old_head->next_));
+    hazard_ptrs_.release_hazard(hp);
 
     std::shared_ptr<T> res;
     if (old_head) {
         res.swap(old_head->data_);
         old_head->data_ = nullptr;
-        if (hazard_ptrs_.in_hazard(old_head)) {
-            hazard_ptrs_.reclaim_later(old_head);
-        } else {
-            delete old_head;
-        }
+        hazard_ptrs_.reclaim_later(old_head);
     }
-    hazard_ptrs_.release_hazard(hp);
     return res;
 }
 

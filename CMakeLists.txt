@@ -5,15 +5,13 @@ cmake_minimum_required(VERSION 3.8)
 set(PROJECT_NAME LockFree)
 
 # Set compiler
+set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 
 project(${PROJECT_NAME} C CXX)
-
-set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 
 # 3. Set C and C++ standards
 set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
-
 
 # 4. Enables position inpdendent code
 # is compiled in a way that allows the generated machine code
@@ -40,7 +38,7 @@ add_subdirectory(test)
 
 # 8. Add the google bencmark subdirectory
 #   and benchmark subdirectory
-add_subdirectory(googlebench) 
+add_subdirectory(benchmark) 
 add_subdirectory(benchmarks) 
 
 # 9. Define library sources
@@ -58,4 +56,4 @@ target_include_directories(${PROJECT_NAME} PUBLIC include)
 
 # 12. Attach threads library 
 find_package(Threads REQUIRED)
-target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads)
+target_link_libraries(${PROJECT_NAME} PUBLIC Threads::Threads rt)

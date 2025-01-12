@@ -1,4 +1,4 @@
-#include "../include/lock-free-stack.hpp"
+#include "../include/lock-std-stack.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>
@@ -19,14 +19,14 @@
 
 TEST(Basic, Empty) {
 
-    lock_free_stack<int> s;
+    lock_std_stack<int> s;
 
     EXPECT_TRUE(s.empty());
 }
 
 TEST(Basic, Empty2) {
 
-    lock_free_stack<int> s;
+    lock_std_stack<int> s;
 
     s.push(1);
 
@@ -35,7 +35,7 @@ TEST(Basic, Empty2) {
 
 TEST(Basic, PushPop) {
 
-    lock_free_stack<int> s;
+    lock_std_stack<int> s;
 
     s.push(1);
     s.push(2);
@@ -54,7 +54,7 @@ TEST(Basic, PushPop) {
 
 TEST(Concurrent, TwoTrheads) {
 
-    lock_free_stack<int> s;
+    lock_std_stack<int> s;
     int n = 1000;
     int number_of_producers = 1;
     int number_of_consumers = 1;
@@ -94,7 +94,7 @@ TEST(Concurrent, TwoTrheads) {
 
 TEST(Concurrent, MoreTrheads) {
 
-    lock_free_stack<int> s;
+    lock_std_stack<int> s;
     int n = 16'000;
     int number_of_producers = 4;
     int number_of_consumers = 4;
@@ -136,7 +136,7 @@ TEST(Concurrent, MoreTrheads) {
 
 TEST(Stress, HighTrheads) {
 
-    lock_free_stack<int> s;
+    lock_std_stack<int> s;
     int n = 6'000'000;
     int number_of_producers = 4;
     int number_of_consumers = 4;
@@ -178,7 +178,7 @@ TEST(Stress, HighTrheads) {
 
 TEST(Stress, RandSleep) {
 
-    lock_free_stack<int> s;
+    lock_std_stack<int> s;
     int n = 50'000;
     int number_of_producers = 4;
     int number_of_consumers = 4;
@@ -278,7 +278,7 @@ struct ExeptInt {
 
 TEST(Stress, Exceptions) {
 
-    lock_free_stack<ExeptInt> s;
+    lock_std_stack<ExeptInt> s;
     int n = 10'000;
     int number_of_producers = 4;
     int number_of_consumers = 4;

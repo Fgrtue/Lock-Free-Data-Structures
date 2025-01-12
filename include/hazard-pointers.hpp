@@ -1,6 +1,8 @@
 #include <atomic>
 #include <memory>
 #include <assert.h>
+#include <iostream>
+#include <mutex>
 
 /*
     Hazard pointers plan
@@ -33,7 +35,12 @@ class hazard_pointers {
 
     public:
 
-    hazard_pointers() : hazards_list_(nullptr), reclamation_list_(nullptr) {}
+    hazard_pointers() 
+    : hazards_list_(nullptr)
+    , reclamation_list_(nullptr) 
+    , recl_list_sz_(0) 
+    {}
+    
     hazard_pointers(const hazard_pointers& other) = delete;
     hazard_pointers& operator=(const hazard_pointers& other) = delete;
 
@@ -69,10 +76,15 @@ class hazard_pointers {
 
     struct node_recl {
 
-        node_recl(N* data): data_(data), next_(nullptr) {} 
+        node_recl(N* data)
+        : data_(data)
+        , next_(nullptr)
+        {} 
 
         void delete_node() {
             delete static_cast<N*>(data_);
+            data_ = nullptr;
+            next_ = nullptr;
         }
 
         N*   data_;
@@ -87,8 +99,11 @@ class hazard_pointers {
 
     private:
 
-    std::atomic<HP*> hazards_list_;
+    std::atomic<HP*>        hazards_list_;
     std::atomic<node_recl*> reclamation_list_;
+    std::atomic<int>        recl_list_sz_;
+    static constexpr int    max_recl_size_ = 20'000;
+    std::mutex              mutex_scan_;
 };
 
 template<class N>
@@ -136,11 +151,14 @@ void hazard_pointers<N>::insert_reclaim(node_recl* reclaim_new) {
 
     reclaim_new->next_ = reclamation_list_.load();
     while (!reclamation_list_.compare_exchange_strong(reclaim_new->next_, reclaim_new));
+    int sz;
+    if ((sz = recl_list_sz_.fetch_add(1) >= max_recl_size_)) {
+        delete_nodes_with_no_hazards();
+    }
 }
 
 template<class N>
 void hazard_pointers<N>::reclaim_later(N* node) {
-
 
     node_recl* reclaim_new = new node_recl(node);
     insert_reclaim(reclaim_new);
@@ -148,6 +166,16 @@ void hazard_pointers<N>::reclaim_later(N* node) {
 
 template<class N>
 void hazard_pointers<N>::delete_nodes_with_no_hazards() {
+
+    std::unique_lock<std::mutex> ul{mutex_scan_, std::defer_lock_t()};
+
+    if (!ul.try_lock()) {
+        return ;
+    }
+    int cur_sz;
+    do {
+        cur_sz = recl_list_sz_.load();
+    } while (!recl_list_sz_.compare_exchange_strong(cur_sz, 0));
 
     node_recl* list_ptr = reclamation_list_.exchange(nullptr);
     node_recl* next_list;
