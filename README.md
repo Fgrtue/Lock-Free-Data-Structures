@@ -82,12 +82,22 @@ the benchmark results are not that exciting. Speaking of which...
 The results of benchmarks are written in the folder `results_benchmarks`. There are several comparisons that might be interesting. 
 
 #### Lock-based queues: std and fine-grained
+
 - **Std queue**
-![image](https://github.com/user-attachments/assets/109fc613-5b3a-47c5-88ff-92a05bf0b947)
+![image](https://github.com/user-attachments/assets/d28c88cd-3de8-42bf-bf6b-2f246c9a7b86)
 
 - **Fine-grained queue**
 
-![image](https://github.com/user-attachments/assets/af0dcbea-baa2-448c-beea-8c7d0437d04c)
+![image](https://github.com/user-attachments/assets/9f22ac93-b6a5-4c49-8dc4-aabe7e3ebee7)
 
+**Conclusion:** the only improvement is seen at MPMC with `8` threads in total. This means, `4` threads for producers and `4` threads for consumers.
+
+#### Std queue vs Lock-free SPSC queue
+
+- **Std queue**
+   
+![image](https://github.com/user-attachments/assets/92d6b989-684b-43b3-af1b-abf92ff48ea7)
+
+- **
 
    
