@@ -51,12 +51,12 @@ For tests, it is recommended to use `Debug` mode. For benchmarks `Release` shoul
 Let us take a closer (but not too close) look at the `include` folder. It contains:
 
 1. Two implementations of non-lock-free queues
-  1) Queue that uses `std::queue` as an underlying data structure
-  2) Queue with better locking techniques, allowing more concurrency
+  - Queue that uses `std::queue` as an underlying data structure
+  - Queue with better locking techniques, allowing more concurrency
 2. Three implementations of lock-free queues
-  1) **SPSC** queue that is incredibly quick, but is guaranteed to work only with one thread per operation
-  2) **SPMC** queue that is quick and can handle multiple producers threads
-  3) **MPMC** queue that is also very fast, but restricted in the number of elements that it can store
+  - **SPSC** queue that is incredibly quick, but is guaranteed to work only with one thread per operation
+  - **SPMC** queue that is quick and can handle multiple producers threads
+  - **MPMC** queue that is also very fast, but restricted in the number of elements that it can store
 3. BONUS implementation of non-lock-free and lock-free stack
    - The only reason for them to be called bonus is that they are not guaranteed to work under any concurrency
    load. They are the result of a partially successful endeavor into the hazard pointers technique. The implementation
@@ -79,6 +79,15 @@ the benchmark results are not that exciting. Speaking of which...
 
 ## Results
 
+The results of benchmarks are written in the folder `results_benchmarks`. There are several comparisons that might be interesting. 
+
+#### Lock-based queues: std and fine-grained
+- **Std queue**
+![image](https://github.com/user-attachments/assets/109fc613-5b3a-47c5-88ff-92a05bf0b947)
+
+- **Fine-grained queue**
+
+![image](https://github.com/user-attachments/assets/af0dcbea-baa2-448c-beea-8c7d0437d04c)
 
 
    
