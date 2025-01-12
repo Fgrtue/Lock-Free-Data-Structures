@@ -10,3 +10,4 @@ Pop/real_time/threads:4         483 ns          404 ns      1250128
 MPMC/real_time/threads:2      47769 us        46576 us           18 items_per_second=2.09342M/s
 MPMC/real_time/threads:4      81283 us        67611 us            8 items_per_second=1.23026M/s
 MPMC/real_time/threads:8     298783 us       233997 us            8 items_per_second=334.691k/s
+

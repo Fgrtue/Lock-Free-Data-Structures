@@ -42,8 +42,8 @@ add_subdirectory(benchmark)
 add_subdirectory(benchmarks) 
 
 # 9. Define library sources
-set(HEADERS include/lock-std-queue.hpp)
-set(SOURCES src/lock-std-queue.cpp)
+file(GLOB_RECURSE HEADERS "include/*.hpp")
+file(GLOB_RECURSE SOURCES "src/*.cpp")
 
 # 10. it will be linked with other things
 # to form program. We will split our code in

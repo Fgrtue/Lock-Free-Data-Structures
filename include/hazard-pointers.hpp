@@ -1,3 +1,5 @@
+#pragma once
+
 #include <atomic>
 #include <memory>
 #include <assert.h>
@@ -46,16 +48,16 @@ class hazard_pointers {
 
     ~hazard_pointers() {
 
-        HP* hzrd_ptr = hazards_list_.load();
+        HP* hzrd_ptr = hazards_list_.load(std::memory_order_acquire);
         HP* hzrd_next_ptr;
         while (hzrd_ptr)
         {
             hzrd_next_ptr = hzrd_ptr->next_;
-            assert(!hzrd_ptr->active_.load());
+            assert(!hzrd_ptr->active_.load(std::memory_order_acquire));
             delete hzrd_ptr;
             hzrd_ptr = hzrd_next_ptr;
         }
-        hazards_list_.store(nullptr);
+        hazards_list_.store(nullptr, std::memory_order_release);
         delete_nodes_with_no_hazards();
     }
 
@@ -110,7 +112,7 @@ template<class N>
 typename hazard_pointers<N>::HP*
 hazard_pointers<N>::acquire_hazard() {
 
-    HP* ptr = hazards_list_.load();
+    HP* ptr = hazards_list_.load(std::memory_order_acquire);
     bool expect = false;
     for(; ptr ; ptr = ptr->next_) {
 
@@ -119,26 +121,26 @@ hazard_pointers<N>::acquire_hazard() {
         }
     }
     HP* hazard_new = new HP();
-    hazard_new->active_.store(true);
+    hazard_new->active_.store(true, std::memory_order_release);
     do {
-        hazard_new->next_ = hazards_list_.load();
+        hazard_new->next_ = hazards_list_.load(std::memory_order_acquire);
     } while (!hazards_list_.compare_exchange_strong(hazard_new->next_, hazard_new));
     return hazard_new;
 }
 
 template<class N>
 void hazard_pointers<N>::release_hazard(HP* hp) {
-    hp->ptr_.store(nullptr);
-    hp->active_.store(false);
+    hp->ptr_.store(nullptr, std::memory_order_release);
+    hp->active_.store(false, std::memory_order_release);
 }
 
 template<class N>
 bool hazard_pointers<N>::in_hazard(N* data) {
 
-    HP* cur = hazards_list_.load();
+    HP* cur = hazards_list_.load(std::memory_order_acquire);
     for (;cur; cur = cur->next_) {
         assert(cur);
-        if (cur->ptr_.load() == data) {
+        if (cur->ptr_.load(std::memory_order_acquire) == data) {
             return true;
         }
     }
@@ -149,8 +151,8 @@ bool hazard_pointers<N>::in_hazard(N* data) {
 template<class N>
 void hazard_pointers<N>::insert_reclaim(node_recl* reclaim_new) {
 
-    reclaim_new->next_ = reclamation_list_.load();
-    while (!reclamation_list_.compare_exchange_strong(reclaim_new->next_, reclaim_new));
+    reclaim_new->next_ = reclamation_list_.load(std::memory_order_acquire);
+    while (!reclamation_list_.compare_exchange_strong(reclaim_new->next_, reclaim_new, std::memory_order_acq_rel));
     int sz;
     if ((sz = recl_list_sz_.fetch_add(1) >= max_recl_size_)) {
         delete_nodes_with_no_hazards();
@@ -174,8 +176,8 @@ void hazard_pointers<N>::delete_nodes_with_no_hazards() {
     }
     int cur_sz;
     do {
-        cur_sz = recl_list_sz_.load();
-    } while (!recl_list_sz_.compare_exchange_strong(cur_sz, 0));
+        cur_sz = recl_list_sz_.load(std::memory_order_acquire);
+    } while (!recl_list_sz_.compare_exchange_strong(cur_sz, 0, std::memory_order_acq_rel));
 
     node_recl* list_ptr = reclamation_list_.exchange(nullptr);
     node_recl* next_list;

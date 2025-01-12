@@ -1,3 +1,5 @@
+#pragma once
+
 #include "../include/hazard-pointers.hpp"
 
 #include <atomic>
@@ -44,22 +46,22 @@ void  lock_free_stack<T>::push(T val) {
     Node* head_new = new Node();
     head_new->data_ = data;
     do {
-        head_new->next_ = head_.load();
-    } while (!head_.compare_exchange_strong(head_new->next_, head_new));
+        head_new->next_ = head_.load(std::memory_order_acquire);
+    } while (!head_.compare_exchange_strong(head_new->next_, head_new, std::memory_order_acq_rel));
 }
 
 template<class T>
 std::shared_ptr<T>  lock_free_stack<T>::pop() {
 
     typename  hazard_pointers<Node>::HP* hp = hazard_ptrs_.acquire_hazard();
-    Node* old_head = head_.load();
+    Node* old_head = head_.load(std::memory_order_acquire);
     do {
-        hp->ptr_.store(old_head);
-        Node* tmp = head_.load();
+        hp->ptr_.store(old_head, std::memory_order_release);
+        Node* tmp = head_.load(std::memory_order_acquire);
         if (tmp != old_head) {
             continue;  // Restart if head changes
         }
-    } while(old_head && !head_.compare_exchange_strong(old_head, old_head->next_));
+    } while(old_head && !head_.compare_exchange_strong(old_head, old_head->next_, std::memory_order_acq_rel));
     hazard_ptrs_.release_hazard(hp);
 
     std::shared_ptr<T> res;
@@ -74,7 +76,7 @@ std::shared_ptr<T>  lock_free_stack<T>::pop() {
 template<class T>
 bool lock_free_stack<T>::empty() {
 
-    if (head_.load() == nullptr) {
+    if (head_.load(std::memory_order_acquire) == nullptr) {
         return true;
     }
     return false;

@@ -46,14 +46,12 @@ BENCHMARK_DEFINE_F(QueueFix, bench_spmc)(benchmark::State& state) {
 
     for (auto _ : state) {
         if (pusher) {
-            for (int i = 0; i < kNumItems; ++i) {
+            for (int i = 0; i < kNumItems * state.threads(); ++i) {
                 q.push(i);
             }
         } else {
-            int val;
             for (int i = 0; i < kNumItems; ++i) {
-                q.try_pop(val);
-                benchmark::DoNotOptimize(val);
+                while(!q.try_pop());
             }    
         }
     }
@@ -70,10 +68,8 @@ BENCHMARK_DEFINE_F(QueueFix, bench_mpmc)(benchmark::State& state) {
                 q.push(i);
             }
         } else {
-            int val;
             for (int i = 0; i < kNumItems; ++i) {
-                q.try_pop(val);
-                benchmark::DoNotOptimize(val);
+                while(!q.try_pop());
             }    
         }
     }

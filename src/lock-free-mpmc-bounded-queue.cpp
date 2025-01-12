@@ -1,1 +1,1 @@
-#include "../include/lock-free-mpmc-bounded-queue.hpp"
+#include "lock-free-mpmc-bounded-queue.hpp"

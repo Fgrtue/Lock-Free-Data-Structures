@@ -1,1 +1,1 @@
-#include "../include/lock-free-spmc-queue.hpp"
+#include "lock-free-spmc-queue.hpp"

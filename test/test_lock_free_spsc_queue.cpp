@@ -195,10 +195,7 @@ TEST(Stress, RandSPSC) {
         std::uniform_int_distribution<int> dist(0, 10);
         for (int j = 0; j < n; ++j) {
             int val;
-            if (!q.pop(val)) {
-                --j;
-                continue;
-            }
+            while(!q.pop(val));
             values[val].store(true, std::memory_order_relaxed);
             std::this_thread::sleep_for(std::chrono::milliseconds(dist(gen)));
         }

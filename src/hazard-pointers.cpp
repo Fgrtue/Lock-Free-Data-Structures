@@ -1,1 +1,1 @@
-#include "../include/hazard-pointers.hpp"
+#include "hazard-pointers.hpp"

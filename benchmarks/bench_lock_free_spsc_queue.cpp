@@ -38,15 +38,15 @@ BENCHMARK_DEFINE_F(QueueFix, bench_pop)(benchmark::State& state) {
 
 BENCHMARK_DEFINE_F(QueueFix, bench_spsc)(benchmark::State& state) {
 
-    bool pusher = state.thread_index() % 2;
+    bool pusher = (state.thread_index() == 1);
     for (auto _ : state) {
         if (pusher) {
-            for (int i = 0; i < kNumItems; ++i) {
+            for (int i = 0; i < kNumItems * state.threads(); ++i) {
                 q.push(i);
             }
         } else {
             for (int i = 0; i < kNumItems; ++i) {
-                q.pop();
+                while(!q.pop());
             }    
         }
     }

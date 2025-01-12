@@ -1,3 +1,5 @@
+#pragma once
+
 #include <memory>
 #include <atomic>
 #include <iostream>
@@ -71,9 +73,9 @@ private:
             external_count cnt;
             cnt.external_count_ = 0;
             cnt.node_ = nullptr;
-            next_.store(cnt);
-            internal_count_.store(0);
-            data_.store(nullptr);
+            next_.store(cnt, std::memory_order_release);
+            internal_count_.store(0, std::memory_order_release);
+            data_.store(nullptr, std::memory_order_release);
 
         }
 
@@ -100,8 +102,8 @@ public:
         external_count cnt;
         cnt.node_ = node;
         cnt.external_count_ = 2;
-        tail_.store(cnt);
-        head_.store(cnt);
+        tail_.store(cnt, std::memory_order_release);
+        head_.store(cnt, std::memory_order_release);
     }
 
     lock_free_spmc_queue(const lock_free_spmc_queue&) = delete;
@@ -118,10 +120,10 @@ public:
 
 
     ~lock_free_spmc_queue() {
-        while(head_.load().node_->next_.load().node_) {
+        while(head_.load(std::memory_order_acquire).node_->next_.load(std::memory_order_acquire).node_) {
             pop();
         }
-        delete head_.load().node_;
+        delete head_.load(std::memory_order_acquire).node_;
     }
 
     bool empty();
@@ -143,10 +145,10 @@ void lock_free_spmc_queue<T>::push(T val) {
     external_count count_new;
     count_new.external_count_ = 1;
     count_new.node_ = node_new;
-    external_count old_tail = tail_.load();
-    old_tail.node_->next_.store(count_new);
-    old_tail.node_->data_.store(data_new.get());
-    tail_.store(count_new);
+    external_count old_tail = tail_.load(std::memory_order_acquire);
+    old_tail.node_->next_.store(count_new, std::memory_order_release);
+    old_tail.node_->data_.store(data_new.get(), std::memory_order_release);
+    tail_.store(count_new, std::memory_order_release);
     data_new.release();
 }
 
@@ -157,19 +159,21 @@ void lock_free_spmc_queue<T>::increase_external(external_count& old_count) {
     do {
         count_new = old_count;
         ++count_new.external_count_;
-    } while (!head_.compare_exchange_strong(old_count, count_new));
+    } while (!head_.compare_exchange_strong(old_count, count_new,
+         std::memory_order_acq_rel, std::memory_order_relaxed));
     old_count.external_count_ = count_new.external_count_;
 }
 
 template<class T>
 void lock_free_spmc_queue<T>::Node::ref_release() {
 
-    int old_internal = internal_count_.load();
+    int old_internal = internal_count_.load(std::memory_order_acquire);
     int internal_new;
     do {
         internal_new = old_internal;
         --internal_new;
-    } while (!internal_count_.compare_exchange_strong(old_internal, internal_new));
+    } while (!internal_count_.compare_exchange_strong(old_internal, internal_new,
+        std::memory_order_acq_rel));
 
     if (internal_new == 0) {
         delete this;
@@ -181,7 +185,7 @@ void lock_free_spmc_queue<T>::free_external(external_count& old_count) {
 
     Node* ptr = old_count.node_;
     int const internal_upd = old_count.external_count_ - 2;
-    if (ptr->internal_count_.fetch_add(internal_upd) == -internal_upd) {
+    if (ptr->internal_count_.fetch_add(internal_upd, std::memory_order_acq_rel) == -internal_upd) {
         delete ptr;
     }
 }
@@ -189,18 +193,18 @@ void lock_free_spmc_queue<T>::free_external(external_count& old_count) {
 template<class T> 
 std::unique_ptr<T> lock_free_spmc_queue<T>::pop() {
 
-    external_count old_count = head_.load();
+    external_count old_count = head_.load(std::memory_order_acquire);
     for(;;) {
         increase_external(old_count);
         Node* const ptr = old_count.node_;
-        if (ptr == tail_.load().node_) {
+        if (ptr == tail_.load(std::memory_order_acquire).node_) {
             ptr->ref_release();
             return std::unique_ptr<T>();
         }
-        external_count next_in_list = ptr->next_.load();
-        if (head_.compare_exchange_strong(old_count, next_in_list)) {
-            T* const res = ptr->data_.load();
-            ptr->data_.store(nullptr);
+        external_count next_in_list = ptr->next_.load(std::memory_order_acquire);
+        if (head_.compare_exchange_strong(old_count, next_in_list, std::memory_order_acq_rel)) {
+            T* const res = ptr->data_.load(std::memory_order_acquire);
+            ptr->data_.store(nullptr, std::memory_order_release);
             free_external(old_count);
             return std::unique_ptr<T>(res);
         }
@@ -212,10 +216,10 @@ std::unique_ptr<T> lock_free_spmc_queue<T>::pop() {
 template<class T> 
 bool lock_free_spmc_queue<T>::empty() {
 
-    external_count old_count = head_.load();
+    external_count old_count = head_.load(std::memory_order_acquire);
     for(;;) {
         increase_external(old_count);
-        if (old_count.node_ == tail_.load().node_) {
+        if (old_count.node_ == tail_.load(std::memory_order_acquire).node_) {
             old_count.node_->ref_release();
             return true;
         }

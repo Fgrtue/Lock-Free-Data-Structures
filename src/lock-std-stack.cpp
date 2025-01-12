@@ -1,1 +1,1 @@
-#include "../include/lock-std-stack.hpp"
+#include "lock-std-stack.hpp"
