@@ -100,5 +100,18 @@ The results of benchmarks are written in the folder `results_benchmarks`. There 
 
 - **SPSC queue**
 
-![image](https://github.com/user-attachments/assets/f49c1845-dd33-4fb5-9354-bce6940502e3)
+![image](https://github.com/user-attachments/assets/0a7ecb0d-4fde-4f2f-ad50-0357b8e4864a)
+
+**Conclusion:** May the naming in `std` queue benchmark not confuse you. This is exactly the same test as we did in `SPSC` queue. Even though the results of push are not that encouraging, pop and push/pop test show outstanding speedup.
+
+#### Std queue vs Lock-free SPMC queue
+
+- **Std queue**
+
+![image](https://github.com/user-attachments/assets/30bfcf63-0b9c-457e-a901-c1868caaf1d4)
+
+- **SPMC queue**
+
+![image](https://github.com/user-attachments/assets/dd678c99-6f8f-49c5-81f1-42b60c3961ff)
+
 
