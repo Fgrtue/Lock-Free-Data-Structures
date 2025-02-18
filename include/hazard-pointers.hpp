@@ -63,7 +63,7 @@ class hazard_pointers {
 
     struct HP {
 
-        HP(): ptr_(nullptr), active_(false), next_(nullptr) {}
+        HP(): next_(nullptr), ptr_(nullptr), active_(false) {}
 
         HP*                 next_;
         std::atomic<N*>     ptr_;

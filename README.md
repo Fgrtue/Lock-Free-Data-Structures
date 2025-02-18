@@ -12,19 +12,25 @@ Let's first look at the main folders:
 
 ## How to build
 
-First, you have to get frameworks for running tests and benchmarks. I used `googletest`(https://github.com/google/googletest) and `googlebenchmark` (https://github.com/google/benchmark). Add them to the repository that you pulled, build them and don't forget to write the correct names in `CMakeLists.txt` in the root of the repository.
+First, you have to get frameworks for running tests and benchmarks. I used `googletest`(https://github.com/google/googletest) and `googlebenchmark` (https://github.com/google/benchmark). GoogleTest will be added automatically. To add GoogleBenchmark use the following steps that are provided at GoogleBenchmark github:
 
 ```
-# 7. Add the google test subdirectory
-#   and test subdirectory
-add_subdirectory(googletest)
-
-# 8. Add the google bencmark subdirectory
-#   and benchmark subdirectory
-add_subdirectory(benchmark) 
+# Check out the library.
+$ git clone https://github.com/google/benchmark.git
+# Go to the library root directory
+$ cd benchmark
+# Make a build directory to place the build output.
+$ cmake -E make_directory "build"
+# Generate build system files with cmake, and download any dependencies.
+$ cmake -E chdir "build" cmake -DBENCHMARK_DOWNLOAD_DEPENDENCIES=on -DCMAKE_BUILD_TYPE=Release ../
+# or, starting with CMake 3.13, use a simpler form:
+# cmake -DBENCHMARK_DOWNLOAD_DEPENDENCIES=on -DCMAKE_BUILD_TYPE=Release -S . -B "build"
+# Build the library.
+$ cmake --build "build" --config Release
+```
 ```
 
-Once you have google test and google benchmark you can follow:
+Once you have google benchmark you can follow:
 
 ```
 mkdir build

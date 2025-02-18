@@ -211,7 +211,7 @@ TEST(Stress, HighSPMC_PTR) {
     int number_of_consumers = 50;
     int n = 1'000'000;
 
-    threads.emplace_back([&q, n, number_of_producers]() {
+    threads.emplace_back([&q, n]() {
         for (int j = 0; j < n; ++j) {
             q.push(j);
         }
@@ -355,7 +355,7 @@ TEST(Exception, SPMC_PTR) {
     int n = 15000;
     std::vector<std::atomic<bool>> values(n);
 
-    threads.emplace_back( [&values, &q, n](){
+    threads.emplace_back( [&q, n](){
 
         std::mt19937 gen(std::random_device{}());
         std::uniform_int_distribution<int> dist(1, 6);

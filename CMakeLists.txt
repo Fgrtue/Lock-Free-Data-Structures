@@ -7,10 +7,9 @@ set(PROJECT_NAME LockFree)
 # Set compiler
 set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 
-project(${PROJECT_NAME} C CXX)
+project(${PROJECT_NAME} CXX)
 
 # 3. Set C and C++ standards
-set(CMAKE_C_STANDARD 99)
 set(CMAKE_CXX_STANDARD 17)
 
 # 4. Enables position inpdendent code
@@ -24,22 +23,28 @@ enable_testing()
 
 # 6. Add ThreadSanitizer flags if enabled
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -g -pthread")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=thread -fno-omit-frame-pointer -g -pthread")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -fsanitize=thread -fno-omit-frame-pointer -g -pthread")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O3 -DNDEBUG")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3 -DNDEBUG")
 endif()
 
 # 7. Add the google test subdirectory
 #   and test subdirectory
-add_subdirectory(googletest)
+
+include(FetchContent)
+
+FetchContent_Declare(
+  googletest
+  URL https://github.com/google/googletest/archive/03597a01ee50ed33e9dfd640b249b4be3799d395.zip)
+
+FetchContent_MakeAvailable(googletest)
+
 add_subdirectory(test)
 
 # 8. Add the google bencmark subdirectory
 #   and benchmark subdirectory
-add_subdirectory(benchmark) 
-add_subdirectory(benchmarks) 
+ add_subdirectory(benchmark) 
+ add_subdirectory(benchmarks) 
 
 # 9. Define library sources
 file(GLOB_RECURSE HEADERS "include/*.hpp")

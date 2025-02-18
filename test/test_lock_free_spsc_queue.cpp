@@ -366,7 +366,7 @@ TEST(Stress, HighSPSC_PTR) {
     int number_of_producers = 1;
     int number_of_consumers = 1;
     int n = 1'000'000;
-    threads.emplace_back([&q, n, number_of_producers]() {
+    threads.emplace_back([&q, n]() {
         for (int j = 0; j < n; ++j) {
             q.push(j);
         }
@@ -403,7 +403,7 @@ TEST(Stress, RandSPSC_PTR) {
     int number_of_consumers = 1;
     int n = 50000;
 
-    threads.emplace_back([&q, n, number_of_producers]() {
+    threads.emplace_back([&q, n]() {
         std::mt19937 gen(std::random_device{}());
         std::uniform_int_distribution<int> dist(0, 10);
         for (int j = 0; j < n; ++j) {

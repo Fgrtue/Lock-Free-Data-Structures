@@ -107,7 +107,7 @@ lock_fine_queue<T>::wait_for_data() {
 
     std::unique_lock<std::mutex> head_lock(mt_head_);
     cv_.wait(head_lock, [&]{return head_.get() != get_tail();});
-    return std::move(head_lock);
+    return head_lock;
 }
 
 template<class T>
