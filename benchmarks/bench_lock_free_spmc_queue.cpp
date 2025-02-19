@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include "../include/lock-free-spmc-queue.hpp"
+#include "lock-free-spmc-queue.hpp"
 #include <iostream>
 #include <thread>
 #include <chrono>
@@ -18,7 +18,9 @@ public:
     } 
 
     void TearDown(::benchmark::State& state) override
-    {}
+    {
+         (void)state;
+    }
 
   lock_free_spmc_queue<int> q;
   static constexpr int kNumItems = 100000;

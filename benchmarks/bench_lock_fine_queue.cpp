@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include "../include/lock-fine-queue.hpp"
+#include "lock-fine-queue.hpp"
 #include <iostream>
 #include <chrono>
 #include <thread>

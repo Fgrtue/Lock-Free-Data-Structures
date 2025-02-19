@@ -1,4 +1,4 @@
-#include "../include/hazard-pointers.hpp"
+#include "hazard-pointers.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>

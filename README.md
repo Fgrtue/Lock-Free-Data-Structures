@@ -38,7 +38,7 @@ cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. // for debug mode use -DCMAKE_BUILD_TYPE=Debug flag
 ```
 
-These commands should allow you to start making the files, which are:
+The target files for testing are:
 
 1. `test_lock_std_queue`
 2. `test_lock_fine_queue`
@@ -50,7 +50,7 @@ These commands should allow you to start making the files, which are:
 
 The same files you can run with `bench` instead of `test` to have the benchmarks.
 
-For tests, it is recommended to use `Debug` mode. For benchmarks `Release` should work better.
+For tests, it is recommended to use `Debug` mode. For benchmarks `Release` would be more appropriate.
 
 ## What's inside
 

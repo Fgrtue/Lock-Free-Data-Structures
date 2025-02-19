@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.11)
 
 add_executable(bench_lock_std_queue bench_lock_std_queue.cpp)
 

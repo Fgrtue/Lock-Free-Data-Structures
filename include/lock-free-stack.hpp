@@ -1,10 +1,43 @@
 #pragma once
 
-#include "../include/hazard-pointers.hpp"
+#include "hazard-pointers.hpp"
 
 #include <atomic>
 #include <memory>
 #include <iostream>
+
+/*
+
+    The implementations secret is in usage of hazard
+    pointer for memory reclamantion. First take a look at
+    hazard pointers to see how they function.
+
+    For this implementation we use a linked list
+    
+    PUSH
+    
+    Push is simple, and just requires one CAS loop
+        
+    1. Create a shared ptr with data
+    2. Create a new head
+    3. Try to exchange old head with the new one in
+    CAS loop
+
+    POP
+
+    1. First we acquire a hazard pointer
+    2. Then, to make sure that the old head is not
+    deleted while we are working with it, we secure
+    our pointer to old_head in in the hazard pointer
+    3. If during the saving of pointer to hazard something
+    changed, we note that and perform loop again
+    4. If not, then we try to exchange old head with the next one
+    in CAS
+    5. If we left with some old head, we then get the content
+    and add the pointer to the head to reclaim later, in order 
+    not to have use-after-free issues
+
+*/
 
 template<class T>
 class lock_free_stack {

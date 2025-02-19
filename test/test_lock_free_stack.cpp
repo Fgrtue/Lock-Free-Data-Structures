@@ -1,4 +1,4 @@
-#include "../include/lock-free-stack.hpp"
+#include "lock-free-stack.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>

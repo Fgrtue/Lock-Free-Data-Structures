@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include "../include/lock-std-queue.hpp"
+#include "lock-std-queue.hpp"
 
 class QueueFix : public benchmark::Fixture {
     

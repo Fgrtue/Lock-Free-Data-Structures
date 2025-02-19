@@ -1,4 +1,4 @@
-#include "../include/lock-std-queue.hpp"
+#include "lock-std-queue.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>

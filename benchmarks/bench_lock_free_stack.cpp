@@ -1,5 +1,5 @@
 #include <benchmark/benchmark.h>
-#include "../include/lock-free-stack.hpp"
+#include "lock-free-stack.hpp"
 
 class StackFix : public benchmark::Fixture {
     
@@ -34,7 +34,6 @@ BENCHMARK_DEFINE_F(StackFix, bench_push)(benchmark::State& state) {
 }
 
 BENCHMARK_DEFINE_F(StackFix, bench_pop)(benchmark::State& state) {
-    int val;
     for (auto _ : state) {
         q.pop();
     }

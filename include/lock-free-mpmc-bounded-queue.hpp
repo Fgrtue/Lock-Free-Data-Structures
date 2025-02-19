@@ -4,6 +4,57 @@
 #include <atomic>
 #include <memory>
 
+/*
+
+    The implementation supports multiple producer
+    multiple consumer lock-free queue as follows 
+    from the name. 
+    
+    We have three methods:
+    1. push
+    2. pop
+    3. empty
+
+    Let us first consider the members
+    -> atomic head
+    -> atomic tail
+    -> array with nodes and atomic generation
+
+    The implemenatation of push and pop I find a bit similar
+    to ticket lock. I will explain that later
+    
+    Let us walk through the algorithm first
+    
+    PUSH
+
+    In a while loop
+    1. Get the old_head value
+    2. Compute the value to which you want to update head
+    3. Check that queue is not empty (by comparing with the tail)
+    4. Get the GENERATION of the cell you are pointing at
+        -> this is the key part, since only the thread which came
+        -> in the right generation will be able to update the queue
+        -> this will make sure that no thread that somehow luckily made
+        -> a round turn (imagine pushes and pops were happenning very quickly)
+        -> can update the cell in the queue
+    5. If your cell is the same gen as your head is, try cas, 
+        if fail        -> repeat the loop
+        if succeeded   -> set the next generation as new_head (for the future popper)
+    
+    POP
+    
+    Pop does exactly the same in a while loop,
+    the only difference is that we have to compare
+    generation with old_tail + 1, and set the generation for
+    the future pusher, which will be tail index + size of the queue
+    -> i.e. a pusher has to do a round trip before it is able to push there
+
+    Let us consider constructor for the queue. One of the
+    optimization that we make is to use power of 2 in the size
+    of the queue. This enables quick modulo operation by using &
+    -> which will erase the most significant bit preserving the rest 
+*/
+
 template<class T>
 class lock_free_mpmc_bounded_queue {
 

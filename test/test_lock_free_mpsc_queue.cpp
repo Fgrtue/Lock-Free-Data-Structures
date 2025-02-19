@@ -1,4 +1,4 @@
-#include "../include/lock-free-mpsc-queue.hpp"
+#include "lock-free-mpsc-queue.hpp"
 
 #include <gtest/gtest.h>
 #include <iostream>

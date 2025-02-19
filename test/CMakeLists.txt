@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.11)
 
 
 add_executable(test_lock_std_queue test_lock_std_queue.cpp)
