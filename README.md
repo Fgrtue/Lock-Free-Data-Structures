@@ -28,7 +28,6 @@ $ cmake -E chdir "build" cmake -DBENCHMARK_DOWNLOAD_DEPENDENCIES=on -DCMAKE_BUIL
 # Build the library.
 $ cmake --build "build" --config Release
 ```
-```
 
 Once you have google benchmark you can follow:
 
