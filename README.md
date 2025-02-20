@@ -35,6 +35,7 @@ Once you have google benchmark you can follow:
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release .. // for debug mode use -DCMAKE_BUILD_TYPE=Debug flag
+cmake --build .
 ```
 
 The target files for testing are:
