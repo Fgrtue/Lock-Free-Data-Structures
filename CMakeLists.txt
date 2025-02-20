@@ -9,8 +9,9 @@ set(CMAKE_CXX_COMPILER "/usr/bin/clang++")
 
 project(${PROJECT_NAME} LANGUAGES CXX)
 
-# 3. Set C and C++ standards
+# 3. Set C++ standards
 set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # 6. Add ThreadSanitizer flags if enabled
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
